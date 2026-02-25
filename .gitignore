@@ -10,19 +10,6 @@ BuildVersion.g.cs
 *.suo
 *.userprefs
 
-# Claude / AI tooling
-.claude/
-.claude*
-CLAUDE.md
-claude.md
-.anthropic/
-.cursorrules
-.cursor/
-.aider*
-.copilot/
-.github/copilot/
-memory/
-
 # OS
 Thumbs.db
 Desktop.ini
