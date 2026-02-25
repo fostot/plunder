@@ -1,0 +1,174 @@
+﻿{
+  "id": "plunder",
+  "name": "Plunder",
+  "version": "0.1.0.12.3341",
+  "author": "Zero",
+  "description": "Plunder - A modular Terraria companion mod with cheat features, item packs, and more",
+  "entry_dll": "Plunder.dll",
+  "config_schema": {
+    "enabled": {
+      "type": "bool",
+      "default": true,
+      "label": "Enabled",
+      "description": "Enable or disable the Plunder mod"
+    },
+    "showPanelOnWorldLoad": {
+      "type": "bool",
+      "default": false,
+      "label": "Show Panel On World Load",
+      "description": "Automatically open the Plunder panel when entering a world"
+    },
+    "panelWidth": {
+      "type": "int",
+      "default": 420,
+      "min": 300,
+      "max": 800,
+      "label": "Panel Width",
+      "description": "Width of the Plunder panel in pixels"
+    },
+    "panelHeight": {
+      "type": "int",
+      "default": 600,
+      "min": 200,
+      "max": 900,
+      "label": "Panel Height",
+      "description": "Height of the Plunder panel in pixels"
+    },
+    "panelX": {
+      "type": "int",
+      "default": -1,
+      "min": -1,
+      "max": 3840,
+      "label": "Panel X Position",
+      "description": "X position of the panel (-1 for default center)"
+    },
+    "panelY": {
+      "type": "int",
+      "default": -1,
+      "min": -1,
+      "max": 2160,
+      "label": "Panel Y Position",
+      "description": "Y position of the panel (-1 for default center)"
+    },
+    "fullBrightEnabled": {
+      "type": "bool",
+      "default": false,
+      "label": "Full Bright",
+      "description": "Remove all darkness - every tile fully lit"
+    },
+    "playerGlowEnabled": {
+      "type": "bool",
+      "default": false,
+      "label": "Player Glow",
+      "description": "Player emits light like a torch - illuminates nearby area"
+    },
+    "fishingBuffsEnabled": {
+      "type": "bool",
+      "default": false,
+      "label": "Auto Fishing Buffs",
+      "description": "Automatically apply fishing potion buffs when holding a fishing rod"
+    },
+    "autoFishingPotion": {
+      "type": "bool",
+      "default": true,
+      "label": "Auto Fishing Potion",
+      "description": "Inject Fishing Potion buff while fishing"
+    },
+    "autoSonarPotion": {
+      "type": "bool",
+      "default": true,
+      "label": "Auto Sonar Potion",
+      "description": "Inject Sonar Potion buff while fishing"
+    },
+    "autoCratePotion": {
+      "type": "bool",
+      "default": true,
+      "label": "Auto Crate Potion",
+      "description": "Inject Crate Potion buff while fishing"
+    },
+    "fishingPowerMultiplier": {
+      "type": "int",
+      "default": 1,
+      "min": 1,
+      "max": 10,
+      "label": "Fishing Power Multiplier",
+      "description": "Multiply fishing power (1x = normal, 10x = maximum boost)"
+    },
+    "legendaryCratesOnly": {
+      "type": "bool",
+      "default": false,
+      "label": "Legendary Crates Only",
+      "description": "Force every fishing catch to be a Golden/Titanium Crate"
+    },
+    "catchRerollMinRarity": {
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 5,
+      "label": "Min Catch Rarity",
+      "description": "Skip catches below this rarity (0=Off, 1=Blue, 2=Green, 3=Orange, 4=LightRed, 5=Pink)"
+    },
+    "teleportToCursorEnabled": {
+      "type": "bool",
+      "default": false,
+      "label": "Teleport To Cursor",
+      "description": "Enable teleporting to mouse cursor position with keybind"
+    },
+    "mapTeleportEnabled": {
+      "type": "bool",
+      "default": false,
+      "label": "Map Click Teleport",
+      "description": "Right-click on the fullscreen world map to teleport to that location"
+    },
+    "mapRevealEnabled": {
+      "type": "bool",
+      "default": false,
+      "label": "Full Map Reveal",
+      "description": "Reveal the entire world map - removes fog of war"
+    }
+  },
+  "keybinds": [
+    {
+      "id": "toggle-panel",
+      "label": "Toggle Plunder Panel",
+      "description": "Open or close the main Plunder panel",
+      "default": "OemCloseBrackets"
+    },
+    {
+      "id": "toggle-fullbright",
+      "label": "Toggle Full Bright",
+      "description": "Toggle darkness removal on/off",
+      "default": "Y"
+    },
+    {
+      "id": "toggle-player-glow",
+      "label": "Toggle Player Glow",
+      "description": "Toggle player light emission on/off",
+      "default": "None"
+    },
+    {
+      "id": "toggle-fishing-buffs",
+      "label": "Toggle Fishing Buffs",
+      "description": "Toggle auto fishing buff injection on/off",
+      "default": "None"
+    },
+    {
+      "id": "toggle-teleport",
+      "label": "Toggle Teleport To Cursor",
+      "description": "Toggle the teleport to cursor feature on/off",
+      "default": "NumPad4"
+    },
+    {
+      "id": "do-teleport",
+      "label": "Teleport To Cursor",
+      "description": "Teleport to the mouse cursor position (must be enabled first)",
+      "default": "T"
+    },
+    {
+      "id": "toggle-map-teleport",
+      "label": "Toggle Map Click Teleport",
+      "description": "Toggle right-click map teleport on/off",
+      "default": "None"
+    }
+  ]
+}
