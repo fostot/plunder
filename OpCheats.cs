@@ -34,6 +34,8 @@ namespace Plunder
         private static bool _noTreeBombs;
         private static int _spawnRateMult = 1;
         private static int _runSpeedMult = 1;
+        private static bool _toolRangeEnabled;
+        private static int _toolRangeMult = 1;
 
         // ---- Properties ----
         public static bool GodMode => _godMode;
@@ -50,6 +52,8 @@ namespace Plunder
         public static bool NoTreeBombs => _noTreeBombs;
         public static int SpawnRateMult => _spawnRateMult;
         public static int RunSpeedMult => _runSpeedMult;
+        public static bool ToolRangeEnabled => _toolRangeEnabled;
+        public static int ToolRangeMult => _toolRangeMult;
 
         // ---- Toggle methods (UI clicks — flip + chat message) ----
 
@@ -119,6 +123,15 @@ namespace Plunder
             ShowMsg("No Tree Bombs " + (_noTreeBombs ? "ON" : "OFF"), _noTreeBombs);
         }
 
+        public static void ToggleToolRange()
+        {
+            _toolRangeEnabled = !_toolRangeEnabled;
+            string label = _toolRangeEnabled
+                ? (_toolRangeMult <= 1 ? "Tool Range: Normal" : $"Tool Range: {_toolRangeMult}x")
+                : "Tool Range Override OFF";
+            ShowMsg(label, _toolRangeEnabled);
+        }
+
         // ---- Setter methods (sliders / config restore) ----
 
         public static void SetGodMode(bool v) { _godMode = v; }
@@ -142,6 +155,8 @@ namespace Plunder
         }
 
         public static void SetRunSpeedMult(int v) { _runSpeedMult = v; }
+        public static void SetToolRangeEnabled(bool v) { _toolRangeEnabled = v; }
+        public static void SetToolRangeMult(int v) { _toolRangeMult = Math.Max(1, v); }
 
         // ============================================================
         //  REFLECTION CACHE
@@ -173,6 +188,9 @@ namespace Plunder
         private static FieldInfo _immuneField;
         private static FieldInfo _immuneTimeField;
         private static FieldInfo _immuneNoBlink;
+        private static FieldInfo _tileRangeXField;
+        private static FieldInfo _tileRangeYField;
+        private static FieldInfo _blockRangeField;
 
         // NPC fields
         private static FieldInfo _npcLifeField;
@@ -233,6 +251,8 @@ namespace Plunder
             _noTreeBombs = false;
             _spawnRateMult = 1;
             _runSpeedMult = 1;
+            _toolRangeEnabled = false;
+            _toolRangeMult = 1;
 
             _log?.Info("OpCheats unloaded");
         }
@@ -290,6 +310,9 @@ namespace Plunder
                 _immuneField = _playerType.GetField("immune", pubInst);
                 _immuneTimeField = _playerType.GetField("immuneTime", pubInst);
                 _immuneNoBlink = _playerType.GetField("immuneNoBlink", pubInst);
+                _tileRangeXField = _playerType.GetField("tileRangeX", pubInst);
+                _tileRangeYField = _playerType.GetField("tileRangeY", pubInst);
+                _blockRangeField = _playerType.GetField("blockRange", pubInst);
 
                 // NPC fields
                 _npcLifeField = _npcType.GetField("life", pubInst);
@@ -601,6 +624,26 @@ namespace Plunder
                 // No Fall Damage
                 if (_noFallDamage && _noFallDmgField != null)
                     _noFallDmgField.SetValue(__instance, true);
+
+                // Tool Range — multiply tileRangeX/Y so tools reach further
+                if (_toolRangeEnabled && _toolRangeMult > 1)
+                {
+                    if (_tileRangeXField != null)
+                    {
+                        int baseX = (int)_tileRangeXField.GetValue(__instance);
+                        _tileRangeXField.SetValue(__instance, baseX * _toolRangeMult);
+                    }
+                    if (_tileRangeYField != null)
+                    {
+                        int baseY = (int)_tileRangeYField.GetValue(__instance);
+                        _tileRangeYField.SetValue(__instance, baseY * _toolRangeMult);
+                    }
+                    if (_blockRangeField != null)
+                    {
+                        int baseBlock = (int)_blockRangeField.GetValue(__instance);
+                        _blockRangeField.SetValue(__instance, baseBlock + _toolRangeMult * 2);
+                    }
+                }
 
                 // Spawn Rate
                 if (_spawnRateMult == 0)

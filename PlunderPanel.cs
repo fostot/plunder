@@ -46,6 +46,7 @@ namespace Plunder
         private readonly Slider _damageMultSlider = new Slider();
         private readonly Slider _spawnRateSlider = new Slider();
         private readonly Slider _runSpeedSlider = new Slider();
+        private readonly Slider _toolRangeSlider = new Slider();
 
         // Collapsible section state
         private readonly Dictionary<string, bool> _sectionExpanded = new Dictionary<string, bool>();
@@ -95,6 +96,10 @@ namespace Plunder
         public Action<int> SetSpawnRateMult;
         public Func<int> GetRunSpeedMult;
         public Action<int> SetRunSpeedMult;
+        public Action OnToolRangeToggle;
+        public Func<bool> GetToolRangeEnabledState;
+        public Func<int> GetToolRangeMult;
+        public Action<int> SetToolRangeMult;
 
         // Cheats: Movement
         public Action OnTeleportToggle;
@@ -805,6 +810,44 @@ namespace Plunder
                 if (newRs != runSpeed)
                     SetRunSpeedMult?.Invoke(newRs);
             }
+
+            layout.Space(4);
+
+            // Tool Range — checkbox + slider
+            int toolRange = GetToolRangeMult?.Invoke() ?? 1;
+            bool toolRangeOn = GetToolRangeEnabledState?.Invoke() ?? false;
+            string trLabel = !toolRangeOn ? "Tool Range Override"
+                : toolRange <= 1 ? "Tool Range: 1x (normal)"
+                : $"Tool Range: {toolRange}x";
+            {
+                int lblY = layout.Advance(18);
+                if (InView(lblY, 18))
+                {
+                    bool lblHover = WidgetInput.IsMouseOver(layout.X, lblY, layout.Width, 18);
+                    if (lblHover)
+                        RichTooltip.Set("Tool Range Multiplier",
+                            "Multiplies how far your tools can reach.\n" +
+                            "Affects pickaxes, axes, hammers, and\nblock placement distance.\n" +
+                            "1x = Normal range.\n" +
+                            $"{(toolRange > 1 ? $"{toolRange}x = {toolRange}x further reach.\n" : "")}" +
+                            "Great for mining from a safe distance.");
+                    string display = TextUtil.Truncate(trLabel, layout.Width);
+                    UIRenderer.DrawText(display, layout.X, lblY + (18 - 14) / 2, UIColors.Text);
+                }
+            }
+            if (VCheckboxTip(ref layout, "Enabled", toolRangeOn,
+                "Enable Tool Range Override", "Toggle extended tool reach on/off."))
+                OnToolRangeToggle?.Invoke();
+            if (toolRangeOn)
+            {
+                int trY = layout.Advance(22);
+                if (InView(trY, 22))
+                {
+                    int newTr = _toolRangeSlider.Draw(layout.X, trY, layout.Width, 22, toolRange, 1, 10);
+                    if (newTr != toolRange)
+                        SetToolRangeMult?.Invoke(newTr);
+                }
+            }
         }
 
         // ============================================================
@@ -856,8 +899,9 @@ namespace Plunder
                 case "Combat": return 1;
                 case "Biomes": return 2;
                 case "Resources": return 3;
-                case "Utility": return 4;
-                default: return 5;
+                case "Building": return 4;
+                case "Utility": return 5;
+                default: return 6;
             }
         }
 

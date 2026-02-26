@@ -339,6 +339,176 @@ namespace Plunder
             _packs.Add(bars);
 
             // ================================================================
+            //  BUILDING
+            // ================================================================
+
+            var woodBuild = new ItemPack("build-wood", "Wood & Cabin",
+                "Warm wooden building materials for cozy cabins and treehouses",
+                "Plunder", true, "Building");
+            woodBuild.Items.AddRange(new[]
+            {
+                new PackItem(9, 999, "Wood"),
+                new PackItem(661, 999, "Rich Mahogany"),
+                new PackItem(619, 999, "Shadewood"),
+                new PackItem(620, 999, "Ebonwood"),
+                new PackItem(150, 999, "Wood Wall"),
+                new PackItem(93, 99, "Wooden Door"),
+                new PackItem(34, 99, "Wooden Table"),
+                new PackItem(36, 99, "Wooden Chair"),
+                new PackItem(106, 99, "Wood Platform"),
+                new PackItem(8, 200, "Torch"),
+            });
+            _packs.Add(woodBuild);
+
+            var stoneBuild = new ItemPack("build-stone", "Stone Castle",
+                "Stone bricks and blocks for castles, towers, and fortresses",
+                "Plunder", true, "Building");
+            stoneBuild.Items.AddRange(new[]
+            {
+                new PackItem(3, 999, "Stone Block"),
+                new PackItem(38, 999, "Gray Brick"),
+                new PackItem(40, 999, "Red Brick"),
+                new PackItem(39, 999, "Gray Brick Wall"),
+                new PackItem(41, 999, "Red Brick Wall"),
+                new PackItem(129, 99, "Stone Slab"),
+                new PackItem(106, 99, "Wood Platform"),
+                new PackItem(8, 200, "Torch"),
+            });
+            _packs.Add(stoneBuild);
+
+            var dungeonBuild = new ItemPack("build-dungeon", "Dungeon Gothic",
+                "Blue, green, and pink dungeon bricks for gothic and medieval builds",
+                "Plunder", true, "Building");
+            dungeonBuild.Items.AddRange(new[]
+            {
+                new PackItem(137, 999, "Blue Brick"),
+                new PackItem(138, 999, "Green Brick"),
+                new PackItem(139, 999, "Pink Brick"),
+                new PackItem(140, 999, "Blue Brick Wall"),
+                new PackItem(141, 999, "Green Brick Wall"),
+                new PackItem(142, 999, "Pink Brick Wall"),
+                new PackItem(106, 99, "Wood Platform"),
+                new PackItem(8, 200, "Torch"),
+            });
+            _packs.Add(dungeonBuild);
+
+            var glassBuild = new ItemPack("build-glass", "Glass & Crystal",
+                "Glass blocks and walls for modern, transparent builds and greenhouses",
+                "Plunder", true, "Building");
+            glassBuild.Items.AddRange(new[]
+            {
+                new PackItem(170, 999, "Glass"),
+                new PackItem(171, 999, "Glass Wall"),
+                new PackItem(172, 999, "Stained Glass (Blue)"),
+                new PackItem(173, 999, "Stained Glass (Green)"),
+                new PackItem(174, 999, "Stained Glass (Red)"),
+                new PackItem(106, 99, "Wood Platform"),
+                new PackItem(8, 200, "Torch"),
+            });
+            _packs.Add(glassBuild);
+
+            var iceBuild = new ItemPack("build-ice", "Ice Palace",
+                "Ice and snow blocks for frozen castles and winter-themed builds",
+                "Plunder", true, "Building");
+            iceBuild.Items.AddRange(new[]
+            {
+                new PackItem(593, 999, "Ice Block"),
+                new PackItem(664, 999, "Snow Block"),
+                new PackItem(2696, 999, "Frozen Slime Block"),
+                new PackItem(1120, 999, "Ice Brick"),
+                new PackItem(1121, 999, "Ice Brick Wall"),
+                new PackItem(106, 99, "Wood Platform"),
+                new PackItem(8, 200, "Torch"),
+            });
+            _packs.Add(iceBuild);
+
+            var hellBuild = new ItemPack("build-hell", "Hellstone Fortress",
+                "Hellstone, obsidian, and lava-themed blocks for infernal builds",
+                "Plunder", true, "Building");
+            hellBuild.Items.AddRange(new[]
+            {
+                new PackItem(56, 999, "Obsidian"),
+                new PackItem(75, 999, "Obsidian Brick"),
+                new PackItem(119, 999, "Hellstone Brick"),
+                new PackItem(76, 999, "Obsidian Brick Wall"),
+                new PackItem(120, 999, "Hellstone Brick Wall"),
+                new PackItem(58, 999, "Hellstone"),
+                new PackItem(106, 99, "Wood Platform"),
+                new PackItem(8, 200, "Torch"),
+            });
+            _packs.Add(hellBuild);
+
+            var marble = new ItemPack("build-marble", "Marble Temple",
+                "Smooth marble blocks and walls for elegant Greek-style temples",
+                "Plunder", true, "Building");
+            marble.Items.AddRange(new[]
+            {
+                new PackItem(3081, 999, "Marble Block"),
+                new PackItem(3086, 999, "Smooth Marble Block"),
+                new PackItem(3087, 999, "Marble Wall"),
+                new PackItem(106, 99, "Wood Platform"),
+                new PackItem(8, 200, "Torch"),
+            });
+            _packs.Add(marble);
+
+            var granite = new ItemPack("build-granite", "Granite Stronghold",
+                "Dark granite blocks for imposing, modern-industrial structures",
+                "Plunder", true, "Building");
+            granite.Items.AddRange(new[]
+            {
+                new PackItem(3083, 999, "Granite Block"),
+                new PackItem(3088, 999, "Smooth Granite Block"),
+                new PackItem(3089, 999, "Granite Wall"),
+                new PackItem(106, 99, "Wood Platform"),
+                new PackItem(8, 200, "Torch"),
+            });
+            _packs.Add(granite);
+
+            var sandstone = new ItemPack("build-sandstone", "Desert Sandstone",
+                "Sandstone and desert blocks for pyramids and arid-themed builds",
+                "Plunder", true, "Building");
+            sandstone.Items.AddRange(new[]
+            {
+                new PackItem(3271, 999, "Sandstone Block"),
+                new PackItem(3274, 999, "Sandstone Brick"),
+                new PackItem(3275, 999, "Sandstone Brick Wall"),
+                new PackItem(169, 999, "Sand Block"),
+                new PackItem(51, 999, "Sandstone Wall"),
+                new PackItem(106, 99, "Wood Platform"),
+                new PackItem(8, 200, "Torch"),
+            });
+            _packs.Add(sandstone);
+
+            var mushroom = new ItemPack("build-mushroom", "Mushroom House",
+                "Glowing mushroom blocks for bioluminescent fantasy builds",
+                "Plunder", true, "Building");
+            mushroom.Items.AddRange(new[]
+            {
+                new PackItem(190, 999, "Mushroom Grass Seeds"),
+                new PackItem(183, 999, "Glowing Mushroom"),
+                new PackItem(194, 999, "Mushroom Block"),
+                new PackItem(224, 999, "Mushroom Wall"),
+                new PackItem(2175, 999, "Mushroom Platform"),
+                new PackItem(8, 200, "Torch"),
+            });
+            _packs.Add(mushroom);
+
+            var livingWood = new ItemPack("build-living", "Living Wood",
+                "Living wood and leaf blocks for organic treehouses and fairy builds",
+                "Plunder", true, "Building");
+            livingWood.Items.AddRange(new[]
+            {
+                new PackItem(9, 999, "Wood"),
+                new PackItem(709, 999, "Living Wood"),
+                new PackItem(710, 999, "Leaf Block"),
+                new PackItem(711, 999, "Living Wood Wall"),
+                new PackItem(712, 999, "Leaf Wall"),
+                new PackItem(106, 99, "Wood Platform"),
+                new PackItem(8, 200, "Torch"),
+            });
+            _packs.Add(livingWood);
+
+            // ================================================================
             //  UTILITY
             // ================================================================
 

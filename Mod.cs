@@ -65,6 +65,8 @@ namespace Plunder
             OpCheats.SetNoTreeBombs(_config.OpNoTreeBombs);
             OpCheats.SetSpawnRateMult(_config.OpSpawnRateMult);
             OpCheats.SetRunSpeedMult(_config.OpRunSpeedMult);
+            OpCheats.SetToolRangeEnabled(_config.OpToolRangeEnabled);
+            OpCheats.SetToolRangeMult(_config.OpToolRangeMult);
 
             // Initialize item packs
             string modsDir = Path.GetDirectoryName(
@@ -132,6 +134,14 @@ namespace Plunder
             {
                 OpCheats.SetRunSpeedMult(v);
                 _config.Set("runSpeedMult", v);
+            };
+            _panel.GetToolRangeEnabledState = () => OpCheats.ToolRangeEnabled;
+            _panel.OnToolRangeToggle = OnToggleToolRange;
+            _panel.GetToolRangeMult = () => OpCheats.ToolRangeMult;
+            _panel.SetToolRangeMult = (v) =>
+            {
+                OpCheats.SetToolRangeMult(v);
+                _config.Set("toolRangeMult", v);
             };
 
             // Wire panel callbacks — Fishing
@@ -284,6 +294,8 @@ namespace Plunder
             OpCheats.SetNoTreeBombs(_config.OpNoTreeBombs);
             OpCheats.SetSpawnRateMult(_config.OpSpawnRateMult);
             OpCheats.SetRunSpeedMult(_config.OpRunSpeedMult);
+            OpCheats.SetToolRangeEnabled(_config.OpToolRangeEnabled);
+            OpCheats.SetToolRangeMult(_config.OpToolRangeMult);
 
             _log.Info("Plunder config reloaded");
         }
@@ -391,6 +403,12 @@ namespace Plunder
         {
             OpCheats.ToggleNoTreeBombs();
             _config.Set("noTreeBombs", OpCheats.NoTreeBombs);
+        }
+
+        private void OnToggleToolRange()
+        {
+            OpCheats.ToggleToolRange();
+            _config.Set("toolRangeEnabled", OpCheats.ToolRangeEnabled);
         }
 
         private void OnToggleLegendaryCrates()

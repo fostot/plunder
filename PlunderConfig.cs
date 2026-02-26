@@ -40,6 +40,8 @@ namespace Plunder
         public bool OpNoTreeBombs { get; private set; }
         public int OpSpawnRateMult { get; private set; }
         public int OpRunSpeedMult { get; private set; }
+        public bool OpToolRangeEnabled { get; private set; }
+        public int OpToolRangeMult { get; private set; }
 
         // ---- Cheats: Fishing ----
         public bool FishingBuffsEnabled { get; private set; }
@@ -100,6 +102,8 @@ namespace Plunder
             OpNoTreeBombs = cfg.Get<bool>("noTreeBombs", false);
             OpSpawnRateMult = cfg.Get<int>("spawnRateMult", 1);
             OpRunSpeedMult = cfg.Get<int>("runSpeedMult", 1);
+            OpToolRangeEnabled = cfg.Get<bool>("toolRangeEnabled", false);
+            OpToolRangeMult = cfg.Get<int>("toolRangeMult", 1);
 
             // Cheats: Fishing
             FishingBuffsEnabled = cfg.Get<bool>("fishingBuffsEnabled", false);
