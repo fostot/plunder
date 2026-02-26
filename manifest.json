@@ -1,7 +1,7 @@
 ﻿{
   "id": "plunder",
   "name": "Plunder",
-  "version": "0.1.0.12.3341",
+  "version": "0.1.0.30.4877",
   "author": "Zero",
   "description": "Plunder - A modular Terraria companion mod with cheat features, item packs, and more",
   "entry_dll": "Plunder.dll",
@@ -125,6 +125,98 @@
       "default": false,
       "label": "Full Map Reveal",
       "description": "Reveal the entire world map - removes fog of war"
+    },
+    "godMode": {
+      "type": "bool",
+      "default": false,
+      "label": "God Mode",
+      "description": "Full invincibility - HP stays max, all damage blocked"
+    },
+    "infiniteMana": {
+      "type": "bool",
+      "default": false,
+      "label": "Infinite Mana",
+      "description": "Mana stays at maximum at all times"
+    },
+    "minionsEnabled": {
+      "type": "bool",
+      "default": false,
+      "label": "Minions Override",
+      "description": "Override max minion slots"
+    },
+    "minionCount": {
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 20,
+      "label": "Minion Count",
+      "description": "Max minion slots (0 = infinite, 1-20 = cap)"
+    },
+    "infiniteFlight": {
+      "type": "bool",
+      "default": false,
+      "label": "Infinite Flight",
+      "description": "Wing and rocket time never run out"
+    },
+    "infiniteAmmo": {
+      "type": "bool",
+      "default": false,
+      "label": "Infinite Ammo",
+      "description": "Ammo is never consumed when shooting"
+    },
+    "infiniteBreath": {
+      "type": "bool",
+      "default": false,
+      "label": "Infinite Breath",
+      "description": "Breath meter stays full - never drown"
+    },
+    "noKnockback": {
+      "type": "bool",
+      "default": false,
+      "label": "No Knockback",
+      "description": "Player cannot be knocked back by enemies"
+    },
+    "damageEnabled": {
+      "type": "bool",
+      "default": false,
+      "label": "Damage Override",
+      "description": "Override attack damage"
+    },
+    "damageMult": {
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 20,
+      "label": "Damage Multiplier",
+      "description": "Damage multiplier (0 = one hit kill, 1 = normal, 2-20 = multiplier)"
+    },
+    "noFallDamage": {
+      "type": "bool",
+      "default": false,
+      "label": "No Fall Damage",
+      "description": "Prevents all fall damage"
+    },
+    "noTreeBombs": {
+      "type": "bool",
+      "default": false,
+      "label": "No Tree Bombs",
+      "description": "Prevents trees from spawning lit bombs in For The Worthy / Zenith worlds"
+    },
+    "spawnRateMult": {
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 20,
+      "label": "Spawn Rate Multiplier",
+      "description": "Enemy spawn rate (0 = no spawns, 1 = normal, 2-20 = multiplier)"
+    },
+    "runSpeedMult": {
+      "type": "int",
+      "default": 1,
+      "min": 1,
+      "max": 10,
+      "label": "Run Speed Multiplier",
+      "description": "Player run speed (1 = normal, 2-10 = multiplier)"
     }
   },
   "keybinds": [
@@ -168,6 +260,12 @@
       "id": "toggle-map-teleport",
       "label": "Toggle Map Click Teleport",
       "description": "Toggle right-click map teleport on/off",
+      "default": "None"
+    },
+    {
+      "id": "toggle-godmode",
+      "label": "Toggle God Mode",
+      "description": "Toggle invincibility on/off",
       "default": "None"
     }
   ]

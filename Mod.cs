@@ -39,6 +39,7 @@ namespace Plunder
             TeleportToCursor.Initialize(_log, _config.TeleportToCursorEnabled);
             MapTeleport.Initialize(_log, _config.MapTeleportEnabled);
             FishingLuck.Initialize(_log);
+            OpCheats.Initialize(_log);
 
             // Apply fishing config state
             FishingLuck.SetBuffsEnabled(_config.FishingBuffsEnabled);
@@ -48,6 +49,22 @@ namespace Plunder
             FishingLuck.SetFishingPowerMultiplier(_config.FishingPowerMultiplier);
             FishingLuck.SetLegendaryCratesOnly(_config.LegendaryCratesOnly);
             FishingLuck.SetCatchRerollMinRarity(_config.CatchRerollMinRarity);
+
+            // Apply OpCheats config state
+            OpCheats.SetGodMode(_config.OpGodMode);
+            OpCheats.SetInfiniteMana(_config.OpInfiniteMana);
+            OpCheats.SetMinionsEnabled(_config.OpMinionsEnabled);
+            OpCheats.SetMinionCount(_config.OpMinionCount);
+            OpCheats.SetInfiniteFlight(_config.OpInfiniteFlight);
+            OpCheats.SetInfiniteAmmo(_config.OpInfiniteAmmo);
+            OpCheats.SetInfiniteBreath(_config.OpInfiniteBreath);
+            OpCheats.SetNoKnockback(_config.OpNoKnockback);
+            OpCheats.SetDamageEnabled(_config.OpDamageEnabled);
+            OpCheats.SetDamageMult(_config.OpDamageMult);
+            OpCheats.SetNoFallDamage(_config.OpNoFallDamage);
+            OpCheats.SetNoTreeBombs(_config.OpNoTreeBombs);
+            OpCheats.SetSpawnRateMult(_config.OpSpawnRateMult);
+            OpCheats.SetRunSpeedMult(_config.OpRunSpeedMult);
 
             // Initialize item packs
             string modsDir = Path.GetDirectoryName(
@@ -70,6 +87,52 @@ namespace Plunder
             _panel.OnTeleportToggle = OnToggleTeleport;
             _panel.GetMapTeleportState = () => MapTeleport.IsActive;
             _panel.OnMapTeleportToggle = OnToggleMapTeleport;
+
+            // Wire panel callbacks — OP Cheats
+            _panel.GetGodModeState = () => OpCheats.GodMode;
+            _panel.OnGodModeToggle = OnToggleGodMode;
+            _panel.GetInfiniteManaState = () => OpCheats.InfiniteMana;
+            _panel.OnInfiniteManaToggle = OnToggleInfiniteMana;
+            _panel.GetMinionsEnabledState = () => OpCheats.MinionsEnabled;
+            _panel.OnMinionsToggle = OnToggleMinions;
+            _panel.GetMinionCount = () => OpCheats.MinionCount;
+            _panel.SetMinionCount = (v) =>
+            {
+                OpCheats.SetMinionCount(v);
+                _config.Set("minionCount", v);
+            };
+            _panel.GetInfiniteFlightState = () => OpCheats.InfiniteFlight;
+            _panel.OnInfiniteFlightToggle = OnToggleInfiniteFlight;
+            _panel.GetInfiniteAmmoState = () => OpCheats.InfiniteAmmo;
+            _panel.OnInfiniteAmmoToggle = OnToggleInfiniteAmmo;
+            _panel.GetInfiniteBreathState = () => OpCheats.InfiniteBreath;
+            _panel.OnInfiniteBreathToggle = OnToggleInfiniteBreath;
+            _panel.GetNoKnockbackState = () => OpCheats.NoKnockback;
+            _panel.OnNoKnockbackToggle = OnToggleNoKnockback;
+            _panel.GetDamageEnabledState = () => OpCheats.DamageEnabled;
+            _panel.OnDamageToggle = OnToggleDamage;
+            _panel.GetDamageMult = () => OpCheats.DamageMult;
+            _panel.SetDamageMult = (v) =>
+            {
+                OpCheats.SetDamageMult(v);
+                _config.Set("damageMult", v);
+            };
+            _panel.GetNoFallDamageState = () => OpCheats.NoFallDamage;
+            _panel.OnNoFallDamageToggle = OnToggleNoFallDamage;
+            _panel.GetNoTreeBombsState = () => OpCheats.NoTreeBombs;
+            _panel.OnNoTreeBombsToggle = OnToggleNoTreeBombs;
+            _panel.GetSpawnRateMult = () => OpCheats.SpawnRateMult;
+            _panel.SetSpawnRateMult = (v) =>
+            {
+                OpCheats.SetSpawnRateMult(v);
+                _config.Set("spawnRateMult", v);
+            };
+            _panel.GetRunSpeedMult = () => OpCheats.RunSpeedMult;
+            _panel.SetRunSpeedMult = (v) =>
+            {
+                OpCheats.SetRunSpeedMult(v);
+                _config.Set("runSpeedMult", v);
+            };
 
             // Wire panel callbacks — Fishing
             _panel.GetFishingBuffsState = () => FishingLuck.BuffsEnabled;
@@ -143,6 +206,10 @@ namespace Plunder
                 "Toggle right-click map teleport on/off", "None",
                 OnToggleMapTeleport);
 
+            context.RegisterKeybind("toggle-godmode", "Toggle God Mode",
+                "Toggle invincibility on/off", "None",
+                OnToggleGodMode);
+
             _panel.Register();
 
             _log.Info($"Plunder v{BuildVersion.Version} initialized");
@@ -159,6 +226,7 @@ namespace Plunder
             MapReveal.EnsurePatched();
             MapTeleport.EnsurePatched();
             FishingLuck.EnsurePatched();
+            OpCheats.EnsurePatched();
 
             if (_config.ShowPanelOnWorldLoad)
                 _panel.Open();
@@ -178,6 +246,7 @@ namespace Plunder
             TeleportToCursor.Unload();
             MapTeleport.Unload();
             FishingLuck.Unload();
+            OpCheats.Unload();
             _log.Info("Plunder unloaded");
         }
 
@@ -199,6 +268,22 @@ namespace Plunder
             FishingLuck.SetFishingPowerMultiplier(_config.FishingPowerMultiplier);
             FishingLuck.SetLegendaryCratesOnly(_config.LegendaryCratesOnly);
             FishingLuck.SetCatchRerollMinRarity(_config.CatchRerollMinRarity);
+
+            // Sync OpCheats states
+            OpCheats.SetGodMode(_config.OpGodMode);
+            OpCheats.SetInfiniteMana(_config.OpInfiniteMana);
+            OpCheats.SetMinionsEnabled(_config.OpMinionsEnabled);
+            OpCheats.SetMinionCount(_config.OpMinionCount);
+            OpCheats.SetInfiniteFlight(_config.OpInfiniteFlight);
+            OpCheats.SetInfiniteAmmo(_config.OpInfiniteAmmo);
+            OpCheats.SetInfiniteBreath(_config.OpInfiniteBreath);
+            OpCheats.SetNoKnockback(_config.OpNoKnockback);
+            OpCheats.SetDamageEnabled(_config.OpDamageEnabled);
+            OpCheats.SetDamageMult(_config.OpDamageMult);
+            OpCheats.SetNoFallDamage(_config.OpNoFallDamage);
+            OpCheats.SetNoTreeBombs(_config.OpNoTreeBombs);
+            OpCheats.SetSpawnRateMult(_config.OpSpawnRateMult);
+            OpCheats.SetRunSpeedMult(_config.OpRunSpeedMult);
 
             _log.Info("Plunder config reloaded");
         }
@@ -244,6 +329,68 @@ namespace Plunder
         {
             MapTeleport.Toggle();
             _config.Set("mapTeleportEnabled", MapTeleport.IsActive);
+        }
+
+        // ---- OP Cheats toggle handlers ----
+
+        private void OnToggleGodMode()
+        {
+            OpCheats.ToggleGodMode();
+            _config.Set("godMode", OpCheats.GodMode);
+        }
+
+        private void OnToggleInfiniteMana()
+        {
+            OpCheats.ToggleInfiniteMana();
+            _config.Set("infiniteMana", OpCheats.InfiniteMana);
+        }
+
+        private void OnToggleMinions()
+        {
+            OpCheats.ToggleMinions();
+            _config.Set("minionsEnabled", OpCheats.MinionsEnabled);
+        }
+
+        private void OnToggleInfiniteFlight()
+        {
+            OpCheats.ToggleInfiniteFlight();
+            _config.Set("infiniteFlight", OpCheats.InfiniteFlight);
+        }
+
+        private void OnToggleInfiniteAmmo()
+        {
+            OpCheats.ToggleInfiniteAmmo();
+            _config.Set("infiniteAmmo", OpCheats.InfiniteAmmo);
+        }
+
+        private void OnToggleInfiniteBreath()
+        {
+            OpCheats.ToggleInfiniteBreath();
+            _config.Set("infiniteBreath", OpCheats.InfiniteBreath);
+        }
+
+        private void OnToggleNoKnockback()
+        {
+            OpCheats.ToggleNoKnockback();
+            _config.Set("noKnockback", OpCheats.NoKnockback);
+        }
+
+        private void OnToggleDamage()
+        {
+            OpCheats.ToggleDamage();
+            _config.Set("damageEnabled", OpCheats.DamageEnabled);
+        }
+
+        private void OnToggleNoFallDamage()
+        {
+            OpCheats.ToggleNoFallDamage();
+            _config.Set("noFallDamage", OpCheats.NoFallDamage);
+        }
+
+        private void OnToggleNoTreeBombs()
+        {
+            OpCheats.ToggleNoTreeBombs();
+            _config.Set("noTreeBombs", OpCheats.NoTreeBombs);
         }
 
         private void OnToggleLegendaryCrates()

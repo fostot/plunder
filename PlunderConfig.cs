@@ -25,6 +25,22 @@ namespace Plunder
         public bool TeleportToCursorEnabled { get; private set; }
         public bool MapTeleportEnabled { get; private set; }
 
+        // ---- Cheats: OP Cheats ----
+        public bool OpGodMode { get; private set; }
+        public bool OpInfiniteMana { get; private set; }
+        public bool OpMinionsEnabled { get; private set; }
+        public int OpMinionCount { get; private set; }
+        public bool OpInfiniteFlight { get; private set; }
+        public bool OpInfiniteAmmo { get; private set; }
+        public bool OpInfiniteBreath { get; private set; }
+        public bool OpNoKnockback { get; private set; }
+        public bool OpDamageEnabled { get; private set; }
+        public int OpDamageMult { get; private set; }
+        public bool OpNoFallDamage { get; private set; }
+        public bool OpNoTreeBombs { get; private set; }
+        public int OpSpawnRateMult { get; private set; }
+        public int OpRunSpeedMult { get; private set; }
+
         // ---- Cheats: Fishing ----
         public bool FishingBuffsEnabled { get; private set; }
         public bool AutoFishingPotion { get; private set; }
@@ -69,6 +85,22 @@ namespace Plunder
             TeleportToCursorEnabled = cfg.Get<bool>("teleportToCursorEnabled", false);
             MapTeleportEnabled = cfg.Get<bool>("mapTeleportEnabled", false);
 
+            // Cheats: OP Cheats
+            OpGodMode = cfg.Get<bool>("godMode", false);
+            OpInfiniteMana = cfg.Get<bool>("infiniteMana", false);
+            OpMinionsEnabled = cfg.Get<bool>("minionsEnabled", false);
+            OpMinionCount = cfg.Get<int>("minionCount", 0);
+            OpInfiniteFlight = cfg.Get<bool>("infiniteFlight", false);
+            OpInfiniteAmmo = cfg.Get<bool>("infiniteAmmo", false);
+            OpInfiniteBreath = cfg.Get<bool>("infiniteBreath", false);
+            OpNoKnockback = cfg.Get<bool>("noKnockback", false);
+            OpDamageEnabled = cfg.Get<bool>("damageEnabled", false);
+            OpDamageMult = cfg.Get<int>("damageMult", 0);
+            OpNoFallDamage = cfg.Get<bool>("noFallDamage", false);
+            OpNoTreeBombs = cfg.Get<bool>("noTreeBombs", false);
+            OpSpawnRateMult = cfg.Get<int>("spawnRateMult", 1);
+            OpRunSpeedMult = cfg.Get<int>("runSpeedMult", 1);
+
             // Cheats: Fishing
             FishingBuffsEnabled = cfg.Get<bool>("fishingBuffsEnabled", false);
             AutoFishingPotion = cfg.Get<bool>("autoFishingPotion", true);
@@ -83,6 +115,7 @@ namespace Plunder
         {
             _context.Config.Set<T>(key, value);
             _context.Config.Save();
+            Reload();
         }
     }
 }

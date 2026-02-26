@@ -42,6 +42,10 @@ namespace Plunder
         private readonly Slider _packMultiplierSlider = new Slider();
         private readonly Slider _panelWidthSlider = new Slider();
         private readonly Slider _panelHeightSlider = new Slider();
+        private readonly Slider _minionCountSlider = new Slider();
+        private readonly Slider _damageMultSlider = new Slider();
+        private readonly Slider _spawnRateSlider = new Slider();
+        private readonly Slider _runSpeedSlider = new Slider();
 
         // Collapsible section state
         private readonly Dictionary<string, bool> _sectionExpanded = new Dictionary<string, bool>();
@@ -61,6 +65,36 @@ namespace Plunder
         public Func<bool> GetPlayerGlowState;
         public Action OnMapRevealToggle;
         public Func<bool> GetMapRevealState;
+
+        // Cheats: OP Cheats
+        public Action OnGodModeToggle;
+        public Func<bool> GetGodModeState;
+        public Action OnInfiniteManaToggle;
+        public Func<bool> GetInfiniteManaState;
+        public Action OnMinionsToggle;
+        public Func<bool> GetMinionsEnabledState;
+        public Func<int> GetMinionCount;
+        public Action<int> SetMinionCount;
+        public Action OnInfiniteFlightToggle;
+        public Func<bool> GetInfiniteFlightState;
+        public Action OnInfiniteAmmoToggle;
+        public Func<bool> GetInfiniteAmmoState;
+        public Action OnInfiniteBreathToggle;
+        public Func<bool> GetInfiniteBreathState;
+        public Action OnNoKnockbackToggle;
+        public Func<bool> GetNoKnockbackState;
+        public Action OnDamageToggle;
+        public Func<bool> GetDamageEnabledState;
+        public Func<int> GetDamageMult;
+        public Action<int> SetDamageMult;
+        public Action OnNoFallDamageToggle;
+        public Func<bool> GetNoFallDamageState;
+        public Action OnNoTreeBombsToggle;
+        public Func<bool> GetNoTreeBombsState;
+        public Func<int> GetSpawnRateMult;
+        public Action<int> SetSpawnRateMult;
+        public Func<int> GetRunSpeedMult;
+        public Action<int> SetRunSpeedMult;
 
         // Cheats: Movement
         public Action OnTeleportToggle;
@@ -105,6 +139,7 @@ namespace Plunder
             foreach (Tab t in Enum.GetValues(typeof(Tab)))
                 _scrollOffsets[t] = 0;
 
+            _sectionExpanded["opcheats"] = true;
             _sectionExpanded["visual"] = true;
             _sectionExpanded["movement"] = true;
             _sectionExpanded["fishing"] = true;
@@ -188,12 +223,14 @@ namespace Plunder
             return false;
         }
 
-        /// <summary>Checkbox at specific X position (no auto-advance).</summary>
-        private bool VCheckboxAt(ref StackLayout layout, int x, int width, int y, string label, bool isChecked, int height = 24)
+            /// <summary>Checkbox at specific X position (no auto-advance), with optional tooltip.</summary>
+        private bool VCheckboxAt(ref StackLayout layout, int x, int width, int y, string label, bool isChecked, string tipTitle = null, string tipText = null, int height = 24)
         {
             if (!InView(y, height)) return false;
 
             bool hover = WidgetInput.IsMouseOver(x, y, width, height);
+            if (hover && tipTitle != null)
+                RichTooltip.Set(tipTitle, tipText);
             if (hover)
                 UIRenderer.DrawRect(x, y, width, height, new Color4(60, 60, 90, 60));
 
@@ -236,7 +273,7 @@ namespace Plunder
 
             // Show tooltip on hover
             if (hover && tipTitle != null)
-                Tooltip.Set(tipTitle, tipText);
+                RichTooltip.Set(tipTitle, tipText);
 
             if (hover)
                 UIRenderer.DrawRect(layout.X, y, layout.Width, height, new Color4(60, 60, 90, 60));
@@ -284,7 +321,7 @@ namespace Plunder
 
             bool hover = WidgetInput.IsMouseOver(x, y, width, height);
             if (hover && tipTitle != null)
-                Tooltip.Set(tipTitle, tipText);
+                RichTooltip.Set(tipTitle, tipText);
 
             return Button.Draw(x, y, width, height, text);
         }
@@ -364,13 +401,7 @@ namespace Plunder
 
                 // 2) Draw tab bar ON TOP (opaque bg covers any scroll bleed)
                 UIRenderer.DrawRect(cx, cy, cw, TabBarHeight + 4, UIColors.PanelBg);
-                int newTab = TabBar.Draw(cx, cy, cw, TabNames, (int)_activeTab, TabBarHeight);
-                if (newTab != (int)_activeTab)
-                {
-                    _activeTab = (Tab)newTab;
-                    if (!_scrollOffsets.ContainsKey(_activeTab))
-                        _scrollOffsets[_activeTab] = 0;
-                }
+                DrawCustomTabBar(cx, cy, cw, TabBarHeight);
 
                 // 3) Draw resize handle at bottom of panel
                 int handleY = cy + ch - ResizeHandleHeight;
@@ -387,6 +418,7 @@ namespace Plunder
             finally
             {
                 _panel.EndDraw();
+                RichTooltip.DrawDeferred();
             }
         }
 
@@ -405,6 +437,46 @@ namespace Plunder
                 _resizeStartY = WidgetInput.MouseY;
                 _resizeStartHeight = _panel.Height;
                 WidgetInput.ConsumeClick();
+            }
+        }
+
+        private const int TabCharWidth = 11;
+
+        private void DrawCustomTabBar(int x, int y, int width, int height)
+        {
+            int tabCount = TabNames.Length;
+            int tabWidth = width / tabCount;
+
+            for (int i = 0; i < tabCount; i++)
+            {
+                int tabX = x + i * tabWidth;
+                int tabW = (i == tabCount - 1) ? (width - i * tabWidth) : tabWidth - 2;
+                bool isActive = i == (int)_activeTab;
+                bool hover = WidgetInput.IsMouseOver(tabX, y, tabW, height);
+
+                // Background
+                Color4 bg = isActive ? UIColors.ItemActiveBg : (hover ? UIColors.SectionBg : UIColors.InputBg);
+                UIRenderer.DrawRect(tabX, y, tabW, height, bg);
+
+                // Active indicator bar
+                if (isActive)
+                    UIRenderer.DrawRect(tabX, y + height - 2, tabW, 2, UIColors.Accent);
+
+                // Centered text — use char count estimate since MeasureText is inaccurate
+                int textWidth = TabNames[i].Length * TabCharWidth;
+                int textX = tabX + (tabW - textWidth) / 2;
+                int textY = y + (height - 14) / 2;
+                Color4 textColor = isActive ? UIColors.AccentText : UIColors.TextDim;
+                UIRenderer.DrawText(TabNames[i], textX, textY, textColor);
+
+                // Click handling
+                if (hover && WidgetInput.MouseLeftClick)
+                {
+                    WidgetInput.ConsumeClick();
+                    _activeTab = (Tab)i;
+                    if (!_scrollOffsets.ContainsKey(_activeTab))
+                        _scrollOffsets[_activeTab] = 0;
+                }
             }
         }
 
@@ -450,6 +522,14 @@ namespace Plunder
 
         private void DrawCheatsTab(ref StackLayout layout)
         {
+            // ---- OP CHEATS ----
+            if (DrawCollapsibleHeader(ref layout, "OP CHEATS", "opcheats"))
+            {
+                DrawOpCheatsSection(ref layout);
+            }
+
+            layout.Space(4);
+
             // ---- VISUAL ---- compact checkboxes, 2 per row
             if (DrawCollapsibleHeader(ref layout, "VISUAL", "visual"))
             {
@@ -460,9 +540,11 @@ namespace Plunder
                 int hw = (layout.Width - 8) / 2;
                 int rowY = layout.Advance(24);
 
-                if (VCheckboxAt(ref layout, layout.X, hw, rowY, "Full Bright", fullBright))
+                if (VCheckboxAt(ref layout, layout.X, hw, rowY, "Full Bright", fullBright,
+                    "Full Bright", "Removes all darkness and shadow.\nEverything is fully lit at all times."))
                     OnFullBrightToggle?.Invoke();
-                if (VCheckboxAt(ref layout, layout.X + hw + 8, hw, rowY, "Player Glow", playerGlow))
+                if (VCheckboxAt(ref layout, layout.X + hw + 8, hw, rowY, "Player Glow", playerGlow,
+                    "Player Glow", "Emits a light aura around your character.\nUseful for exploring dark areas."))
                     OnPlayerGlowToggle?.Invoke();
 
                 if (VCheckboxTip(ref layout, "Map Reveal", mapReveal,
@@ -509,11 +591,14 @@ namespace Plunder
                     int thirdW = (layout.Width - indent - 8) / 3;
                     int subY = layout.Advance(24);
 
-                    if (VCheckboxAt(ref layout, layout.X + indent, thirdW, subY, "Fishing Pot", fp))
+                    if (VCheckboxAt(ref layout, layout.X + indent, thirdW, subY, "Fishing Pot", fp,
+                        "Fishing Potion", "Auto-applies the Fishing Potion buff\nfor increased fishing power."))
                         SetAutoFishingPotion?.Invoke(!fp);
-                    if (VCheckboxAt(ref layout, layout.X + indent + thirdW + 4, thirdW, subY, "Sonar Pot", sp))
+                    if (VCheckboxAt(ref layout, layout.X + indent + thirdW + 4, thirdW, subY, "Sonar Pot", sp,
+                        "Sonar Potion", "Auto-applies the Sonar Potion buff\nto see what's on the hook before reeling in."))
                         SetAutoSonarPotion?.Invoke(!sp);
-                    if (VCheckboxAt(ref layout, layout.X + indent + (thirdW + 4) * 2, thirdW, subY, "Crate Pot", cp))
+                    if (VCheckboxAt(ref layout, layout.X + indent + (thirdW + 4) * 2, thirdW, subY, "Crate Pot", cp,
+                        "Crate Potion", "Auto-applies the Crate Potion buff\nfor increased crate catch rate."))
                         SetAutoCratePotion?.Invoke(!cp);
                 }
 
@@ -561,6 +646,164 @@ namespace Plunder
                         SetCatchRerollMinRarity?.Invoke(newRarity);
                     }
                 }
+            }
+        }
+
+        // ============================================================
+        //  OP CHEATS SECTION
+        // ============================================================
+
+        private void DrawOpCheatsSection(ref StackLayout layout)
+        {
+            bool godMode = GetGodModeState?.Invoke() ?? false;
+            bool infMana = GetInfiniteManaState?.Invoke() ?? false;
+            bool infFlight = GetInfiniteFlightState?.Invoke() ?? false;
+            bool infAmmo = GetInfiniteAmmoState?.Invoke() ?? false;
+
+            // Row 1: God Mode + Inf Mana
+            int hw = (layout.Width - 8) / 2;
+            int rowY = layout.Advance(24);
+            if (VCheckboxAt(ref layout, layout.X, hw, rowY, "God Mode", godMode,
+                "God Mode", "Full invincibility. HP stays max,\nall damage is blocked."))
+                OnGodModeToggle?.Invoke();
+            if (VCheckboxAt(ref layout, layout.X + hw + 8, hw, rowY, "Inf Mana", infMana,
+                "Infinite Mana", "Mana stays at maximum at all times."))
+                OnInfiniteManaToggle?.Invoke();
+
+            // Row 2: Inf Flight + Inf Ammo
+            rowY = layout.Advance(24);
+            if (VCheckboxAt(ref layout, layout.X, hw, rowY, "Inf Flight", infFlight,
+                "Infinite Flight", "Wing and rocket time never run out.\nFly indefinitely."))
+                OnInfiniteFlightToggle?.Invoke();
+            if (VCheckboxAt(ref layout, layout.X + hw + 8, hw, rowY, "Inf Ammo", infAmmo,
+                "Infinite Ammo", "Ammo is never consumed when shooting."))
+                OnInfiniteAmmoToggle?.Invoke();
+
+            // Row 3: Inf Breath + No Knockback
+            bool infBreath = GetInfiniteBreathState?.Invoke() ?? false;
+            bool noKb = GetNoKnockbackState?.Invoke() ?? false;
+            rowY = layout.Advance(24);
+            if (VCheckboxAt(ref layout, layout.X, hw, rowY, "Inf Breath", infBreath,
+                "Infinite Breath", "Breath meter stays full.\nNever drown underwater."))
+                OnInfiniteBreathToggle?.Invoke();
+            if (VCheckboxAt(ref layout, layout.X + hw + 8, hw, rowY, "No Knockback", noKb,
+                "No Knockback", "Player cannot be knocked back by enemies."))
+                OnNoKnockbackToggle?.Invoke();
+
+            // Row 4: No Fall Damage + No Tree Bombs
+            bool noFall = GetNoFallDamageState?.Invoke() ?? false;
+            bool noTreeBombs = GetNoTreeBombsState?.Invoke() ?? false;
+            rowY = layout.Advance(24);
+            if (VCheckboxAt(ref layout, layout.X, hw, rowY, "No Fall Dmg", noFall,
+                "No Fall Damage", "Prevents all fall damage."))
+                OnNoFallDamageToggle?.Invoke();
+            if (VCheckboxAt(ref layout, layout.X + hw + 8, hw, rowY, "No Tree Bombs", noTreeBombs,
+                "No Tree Bombs", "Prevents trees from spawning lit bombs\nin For The Worthy / Zenith worlds."))
+                OnNoTreeBombsToggle?.Invoke();
+
+            layout.Space(4);
+
+            // Minions: checkbox + slider
+            bool minions = GetMinionsEnabledState?.Invoke() ?? false;
+            int minionCount = GetMinionCount?.Invoke() ?? 0;
+            string minionLabel = minions
+                ? (minionCount == 0 ? "Minions: Infinite" : $"Minions: {minionCount} max")
+                : "Minions Override";
+            if (VCheckboxTip(ref layout, minionLabel, minions,
+                "Minions Override", "Override max minion slots.\n0 = Infinite, 1-20 = set cap."))
+                OnMinionsToggle?.Invoke();
+
+            if (minions)
+            {
+                int mcY = layout.Advance(22);
+                if (InView(mcY, 22))
+                {
+                    int newMc = _minionCountSlider.Draw(layout.X + 20, mcY, layout.Width - 20, 22, minionCount, 0, 20);
+                    if (newMc != minionCount)
+                        SetMinionCount?.Invoke(newMc);
+                }
+            }
+
+            layout.Space(4);
+
+            // Damage: checkbox + slider
+            bool dmgEnabled = GetDamageEnabledState?.Invoke() ?? false;
+            int dmgMult = GetDamageMult?.Invoke() ?? 0;
+            string dmgLabel = dmgEnabled
+                ? (dmgMult == 0 ? "Damage: One Hit Kill" : $"Damage: {dmgMult}x")
+                : "Damage Override";
+            if (VCheckboxTip(ref layout, dmgLabel, dmgEnabled,
+                "Damage Override", "Override attack damage.\n0 = One Hit Kill, 2-20 = multiplier."))
+                OnDamageToggle?.Invoke();
+
+            if (dmgEnabled)
+            {
+                int dmgY = layout.Advance(22);
+                if (InView(dmgY, 22))
+                {
+                    int newDmg = _damageMultSlider.Draw(layout.X + 20, dmgY, layout.Width - 20, 22, dmgMult, 0, 20);
+                    if (newDmg != dmgMult)
+                        SetDamageMult?.Invoke(newDmg);
+                }
+            }
+
+            layout.Space(4);
+
+            // Spawn Rate slider
+            int spawnRate = GetSpawnRateMult?.Invoke() ?? 1;
+            string spawnLabel = spawnRate == 0 ? "Spawn Rate: OFF (no spawns)"
+                : spawnRate == 1 ? "Spawn Rate: 1x (normal)"
+                : $"Spawn Rate: {spawnRate}x";
+            {
+                int lblY = layout.Advance(18);
+                if (InView(lblY, 18))
+                {
+                    bool lblHover = WidgetInput.IsMouseOver(layout.X, lblY, layout.Width, 18);
+                    if (lblHover)
+                        RichTooltip.Set("Spawn Rate Multiplier",
+                            "Controls how fast enemies spawn.\n" +
+                            "0 = No spawns at all.\n" +
+                            "1x = Normal spawn rate.\n" +
+                            $"{(spawnRate > 1 ? $"{spawnRate}x = Enemies spawn {spawnRate}x faster\nwith {spawnRate}x more allowed at once.\n" : "")}" +
+                            "Higher values may be less noticeable\nnear towns due to NPC safety zones.");
+                    string display = TextUtil.Truncate(spawnLabel, layout.Width);
+                    UIRenderer.DrawText(display, layout.X, lblY + (18 - 14) / 2, UIColors.Text);
+                }
+            }
+            int srY = layout.Advance(22);
+            if (InView(srY, 22))
+            {
+                int newSr = _spawnRateSlider.Draw(layout.X, srY, layout.Width, 22, spawnRate, 0, 20);
+                if (newSr != spawnRate)
+                    SetSpawnRateMult?.Invoke(newSr);
+            }
+
+            layout.Space(4);
+
+            // Run Speed slider
+            int runSpeed = GetRunSpeedMult?.Invoke() ?? 1;
+            string runLabel = runSpeed == 1 ? "Run Speed: 1x (normal)" : $"Run Speed: {runSpeed}x";
+            {
+                int lblY = layout.Advance(18);
+                if (InView(lblY, 18))
+                {
+                    bool lblHover = WidgetInput.IsMouseOver(layout.X, lblY, layout.Width, 18);
+                    if (lblHover)
+                        RichTooltip.Set("Run Speed Multiplier",
+                            "Multiplies your movement speed.\n" +
+                            "1x = Normal run speed (100%).\n" +
+                            $"{(runSpeed > 1 ? $"{runSpeed}x = {runSpeed * 100}% of normal speed.\n" : "")}" +
+                            "Affects max run speed and acceleration.");
+                    string display = TextUtil.Truncate(runLabel, layout.Width);
+                    UIRenderer.DrawText(display, layout.X, lblY + (18 - 14) / 2, UIColors.Text);
+                }
+            }
+            int rsY = layout.Advance(22);
+            if (InView(rsY, 22))
+            {
+                int newRs = _runSpeedSlider.Draw(layout.X, rsY, layout.Width, 22, runSpeed, 1, 10);
+                if (newRs != runSpeed)
+                    SetRunSpeedMult?.Invoke(newRs);
             }
         }
 
@@ -631,7 +874,7 @@ namespace Plunder
 
                 // First button
                 var pack1 = packs[i];
-                string tip1 = BuildPackTooltip(pack1);
+                string tip1 = BuildPackTooltip(pack1, _packMultiplier);
                 if (VButtonTip(layout.X, rowY, hw, btnHeight, pack1.Name, pack1.Name, tip1))
                     OnSpawnPack?.Invoke(pack1.Id, _packMultiplier);
 
@@ -639,21 +882,27 @@ namespace Plunder
                 if (i + 1 < packs.Count)
                 {
                     var pack2 = packs[i + 1];
-                    string tip2 = BuildPackTooltip(pack2);
+                    string tip2 = BuildPackTooltip(pack2, _packMultiplier);
                     if (VButtonTip(layout.X + hw + gap, rowY, hw, btnHeight, pack2.Name, pack2.Name, tip2))
                         OnSpawnPack?.Invoke(pack2.Id, _packMultiplier);
                 }
             }
         }
 
-        private string BuildPackTooltip(ItemPack pack)
+        private string BuildPackTooltip(ItemPack pack, int multiplier)
         {
-            string tip = pack.Description + "\n\nItems:";
+            string tip = pack.Description;
+            if (multiplier > 1)
+                tip += $"\n({multiplier}x multiplier applied to stackable items)";
+            tip += "\n\nItems:";
             foreach (var item in pack.Items)
             {
                 string name = item.Name ?? $"Item #{item.ItemId}";
-                if (item.Stack > 1)
-                    tip += $"\n  {name} x{item.Stack}";
+                int displayStack = item.Stack;
+                if (multiplier > 1 && item.Stack > 1)
+                    displayStack = item.Stack * multiplier;
+                if (displayStack > 1)
+                    tip += $"\n  {name} x{displayStack}";
                 else
                     tip += $"\n  {name}";
             }
@@ -670,6 +919,14 @@ namespace Plunder
 
             if (VButton(ref layout, "Open Mod Menu (F6)", 28))
                 OnOpenModMenu?.Invoke();
+
+            layout.Space(8);
+            VSectionHeader(ref layout, "DEBUG");
+
+            bool mapTpDebug = MapTeleport.DebugMode;
+            if (VCheckboxTip(ref layout, "Map Teleport Debug", mapTpDebug,
+                "Map Teleport Debug", "Shows coordinate conversion values in chat\nwhen you right-click the map to teleport.\nUse to diagnose teleport accuracy issues."))
+                MapTeleport.ToggleDebug();
 
             layout.Space(8);
             VSectionHeader(ref layout, "INFO");
@@ -707,8 +964,8 @@ namespace Plunder
             // ---- PANEL SETTINGS ----
             if (DrawCollapsibleHeader(ref layout, "PANEL SETTINGS", "cfg_panel"))
             {
-                // Panel Width
-                int pw = _config.PanelWidth;
+                // Panel Width — read from panel directly for immediate feedback
+                int pw = _panel.Width;
                 VLabel(ref layout, $"Panel Width: {pw}");
                 int pwY = layout.Advance(22);
                 if (InView(pwY, 22))
@@ -716,15 +973,15 @@ namespace Plunder
                     int newPw = _panelWidthSlider.Draw(layout.X, pwY, layout.Width, 22, pw, 300, 600);
                     if (newPw != pw)
                     {
-                        _config.Set("panelWidth", newPw);
                         _panel.Width = newPw;
+                        _config.Set("panelWidth", newPw);
                     }
                 }
 
                 layout.Space(2);
 
-                // Panel Height
-                int ph = _config.PanelHeight;
+                // Panel Height — read from panel directly for immediate feedback
+                int ph = _panel.Height;
                 VLabel(ref layout, $"Panel Height: {ph}");
                 int phY = layout.Advance(22);
                 if (InView(phY, 22))
@@ -732,8 +989,8 @@ namespace Plunder
                     int newPh = _panelHeightSlider.Draw(layout.X, phY, layout.Width, 22, ph, MinPanelHeight, MaxPanelHeight);
                     if (newPh != ph)
                     {
-                        _config.Set("panelHeight", newPh);
                         _panel.Height = newPh;
+                        _config.Set("panelHeight", newPh);
                     }
                 }
 
@@ -754,14 +1011,19 @@ namespace Plunder
             if (!InView(y, 20)) return;
 
             int textY = y + (20 - 14) / 2;
-            UIRenderer.DrawText(label, layout.X + 4, textY, UIColors.TextDim);
 
             bool unbound = key == null;
             string display = unbound ? "(unbound)" : key;
             Color4 keyColor = unbound ? UIColors.TextHint : new Color4(255, 255, 180, 255);
 
             int keyWidth = UIRenderer.MeasureText(display);
-            UIRenderer.DrawText(display, layout.X + layout.Width - keyWidth - 4, textY, keyColor);
+            int keyX = layout.X + layout.Width - keyWidth - 4;
+
+            // Truncate label so it doesn't overlap the key binding
+            int labelMaxWidth = layout.Width - keyWidth - 16;
+            string truncLabel = TextUtil.Truncate(label, labelMaxWidth);
+            UIRenderer.DrawText(truncLabel, layout.X + 4, textY, UIColors.TextDim);
+            UIRenderer.DrawText(display, keyX, textY, keyColor);
         }
 
         // ============================================================
