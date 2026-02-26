@@ -1,7 +1,7 @@
 ﻿{
   "id": "plunder",
   "name": "Plunder",
-  "version": "0.1.0.30.4877",
+  "version": "0.1.0.31.4877",
   "author": "Zero",
   "description": "Plunder - A modular Terraria companion mod with cheat features, item packs, and more",
   "entry_dll": "Plunder.dll",
