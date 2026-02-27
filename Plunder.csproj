@@ -27,6 +27,7 @@
       <HintPath>D:\SteamLibrary\steamapps\common\Terraria\TerrariaModder\core\deps\0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="System.Windows.Forms" />
   </ItemGroup>
 
   <!-- Auto-increment build version on every compile -->

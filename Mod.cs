@@ -21,7 +21,7 @@ namespace Plunder
 
         public void Initialize(ModContext context)
         {
-            _log = context.Logger;
+            _log = new PlunderLogger(context.Logger);
             _context = context;
 
             _config = new PlunderConfig(context);
@@ -40,6 +40,8 @@ namespace Plunder
             MapTeleport.Initialize(_log, _config.MapTeleportEnabled);
             FishingLuck.Initialize(_log);
             OpCheats.Initialize(_log);
+            EnvironmentControl.Initialize(_log);
+            WorldActions.Initialize(_log);
 
             // Apply fishing config state
             FishingLuck.SetBuffsEnabled(_config.FishingBuffsEnabled);
@@ -67,6 +69,10 @@ namespace Plunder
             OpCheats.SetRunSpeedMult(_config.OpRunSpeedMult);
             OpCheats.SetToolRangeEnabled(_config.OpToolRangeEnabled);
             OpCheats.SetToolRangeMult(_config.OpToolRangeMult);
+
+            // Apply WorldActions config state
+            WorldActions.SetNoGravestones(_config.NoGravestones);
+            WorldActions.SetNoDeathDrop(_config.NoDeathDrop);
 
             // Initialize item packs
             string modsDir = Path.GetDirectoryName(
@@ -144,6 +150,30 @@ namespace Plunder
                 _config.Set("toolRangeMult", v);
             };
 
+            // Wire panel callbacks — Environment
+            _panel.GetTimePausedState = () => EnvironmentControl.TimePaused;
+            _panel.OnTimePauseToggle = EnvironmentControl.ToggleTimePause;
+            _panel.OnSetDawn = EnvironmentControl.SetDawn;
+            _panel.OnSetNoon = EnvironmentControl.SetNoon;
+            _panel.OnSetDusk = EnvironmentControl.SetDusk;
+            _panel.OnSetMidnight = EnvironmentControl.SetMidnight;
+            _panel.OnFastForwardDawn = EnvironmentControl.FastForwardToDawn;
+            _panel.GetRainingState = EnvironmentControl.IsRaining;
+            _panel.OnToggleRain = EnvironmentControl.ToggleRain;
+            _panel.GetBloodMoonState = EnvironmentControl.IsBloodMoon;
+            _panel.OnToggleBloodMoon = EnvironmentControl.ToggleBloodMoon;
+            _panel.GetEclipseState = EnvironmentControl.IsEclipse;
+            _panel.OnToggleEclipse = EnvironmentControl.ToggleEclipse;
+
+            // Wire panel callbacks — World Actions
+            _panel.GetNoGravestonesState = () => WorldActions.NoGravestones;
+            _panel.OnNoGravestonesToggle = OnToggleNoGravestones;
+            _panel.GetNoDeathDropState = () => WorldActions.NoDeathDrop;
+            _panel.OnNoDeathDropToggle = OnToggleNoDeathDrop;
+            _panel.OnKillAllEnemies = WorldActions.KillAllEnemies;
+            _panel.OnClearItems = WorldActions.ClearItems;
+            _panel.OnClearProjectiles = WorldActions.ClearProjectiles;
+
             // Wire panel callbacks — Fishing
             _panel.GetFishingBuffsState = () => FishingLuck.BuffsEnabled;
             _panel.OnFishingBuffsToggle = OnToggleFishingBuffs;
@@ -183,6 +213,18 @@ namespace Plunder
             // Wire panel callbacks — Item Packs
             _panel.GetItemPacks = () => _itemPacks.Packs;
             _panel.OnSpawnPack = (id, mult) => _itemPacks.SpawnPack(id, mult);
+            _panel.OnExportPack = (id) => _itemPacks.ExportPack(id);
+            _panel.OnImportPack = (json) => _itemPacks.ImportPack(json);
+            _panel.OnSearchItems = (query, max) => _itemPacks.SearchItems(query, max);
+            _panel.OnCreatePack = (name, desc, cat, items) => _itemPacks.CreatePack(name, desc, cat, items);
+            _panel.OnBuildCatalog = () => _itemPacks.BuildItemCatalog();
+            _panel.OnDeletePack = (id) => _itemPacks.DeletePack(id);
+            _panel.OnAddItemToPack = (packId, itemId, stack, name) => _itemPacks.AddItemToPack(packId, itemId, stack, name);
+            _panel.OnRemoveItemFromPack = (packId, idx) => _itemPacks.RemoveItemFromPack(packId, idx);
+            _panel.OnUpdateItemInPack = (packId, idx, itemId, stack, name) => _itemPacks.UpdateItemInPack(packId, idx, itemId, stack, name);
+            _panel.OnRenamePack = (packId, newName) => _itemPacks.RenamePack(packId, newName);
+            _panel.OnUpdatePackCategory = (packId, cat) => _itemPacks.UpdatePackCategory(packId, cat);
+            _panel.OnResetBuiltInPack = (packId) => _itemPacks.ResetBuiltInPack(packId);
 
             // Wire panel callbacks — Mod Menu
             _panel.OnOpenModMenu = OpenModMenu;
@@ -221,6 +263,7 @@ namespace Plunder
                 OnToggleGodMode);
 
             _panel.Register();
+            FrameEvents.OnPreUpdate += _panel.Update;
 
             _log.Info($"Plunder v{BuildVersion.Version} initialized");
             _log.Info("  ] = Panel | Y = FullBright | NumPad4 = Toggle Teleport | T = Teleport");
@@ -237,6 +280,7 @@ namespace Plunder
             MapTeleport.EnsurePatched();
             FishingLuck.EnsurePatched();
             OpCheats.EnsurePatched();
+            WorldActions.EnsurePatched();
 
             if (_config.ShowPanelOnWorldLoad)
                 _panel.Open();
@@ -249,6 +293,7 @@ namespace Plunder
 
         public void Unload()
         {
+            FrameEvents.OnPreUpdate -= _panel.Update;
             _panel?.Unregister();
             FullBright.Unload();
             PlayerGlow.Unload();
@@ -257,6 +302,8 @@ namespace Plunder
             MapTeleport.Unload();
             FishingLuck.Unload();
             OpCheats.Unload();
+            EnvironmentControl.Unload();
+            WorldActions.Unload();
             _log.Info("Plunder unloaded");
         }
 
@@ -296,6 +343,10 @@ namespace Plunder
             OpCheats.SetRunSpeedMult(_config.OpRunSpeedMult);
             OpCheats.SetToolRangeEnabled(_config.OpToolRangeEnabled);
             OpCheats.SetToolRangeMult(_config.OpToolRangeMult);
+
+            // Sync WorldActions states
+            WorldActions.SetNoGravestones(_config.NoGravestones);
+            WorldActions.SetNoDeathDrop(_config.NoDeathDrop);
 
             _log.Info("Plunder config reloaded");
         }
@@ -409,6 +460,20 @@ namespace Plunder
         {
             OpCheats.ToggleToolRange();
             _config.Set("toolRangeEnabled", OpCheats.ToolRangeEnabled);
+        }
+
+        // ---- World Actions toggle handlers ----
+
+        private void OnToggleNoGravestones()
+        {
+            WorldActions.ToggleNoGravestones();
+            _config.Set("noGravestones", WorldActions.NoGravestones);
+        }
+
+        private void OnToggleNoDeathDrop()
+        {
+            WorldActions.ToggleNoDeathDrop();
+            _config.Set("noDeathDrop", WorldActions.NoDeathDrop);
         }
 
         private void OnToggleLegendaryCrates()

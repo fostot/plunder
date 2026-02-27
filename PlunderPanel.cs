@@ -7,16 +7,17 @@ using TerrariaModder.Core.UI.Widgets;
 
 namespace Plunder
 {
-    public class PlunderPanel
+    public partial class PlunderPanel
     {
         private readonly ILogger _log;
         private readonly PlunderConfig _config;
         private DraggablePanel _panel;
 
         // Tab system
-        private enum Tab { Cheats, Feats, Other, Config }
+        private enum Tab { Cheats, Packs, Other, Config }
         private Tab _activeTab = Tab.Cheats;
-        private static readonly string[] TabNames = { "CHEATS", "FEATS", "OTHER", "CONFIG" };
+        private static readonly string[] TabNames = { "CHEATS", "PACKS", "OTHER", "CONFIG" };
+        private int _normalPanelWidth;  // stash width when entering wide tabs
         private const int TabBarHeight = 28;
 
         // Scroll state (per-tab so switching tabs preserves scroll position)
@@ -32,14 +33,13 @@ namespace Plunder
         private bool _isResizing;
         private int _resizeStartY;
         private int _resizeStartHeight;
-        private const int ResizeHandleHeight = 8;
+        private const int ResizeHandleHeight = 18;
         private const int MinPanelHeight = 200;
         private const int MaxPanelHeight = 900;
 
         // Slider instances (stateful widgets need instances)
         private readonly Slider _fishingPowerSlider = new Slider();
         private readonly Slider _catchRaritySlider = new Slider();
-        private readonly Slider _packMultiplierSlider = new Slider();
         private readonly Slider _panelWidthSlider = new Slider();
         private readonly Slider _panelHeightSlider = new Slider();
         private readonly Slider _minionCountSlider = new Slider();
@@ -58,6 +58,55 @@ namespace Plunder
         // Pack multiplier (1x-20x)
         private int _packMultiplier = 1;
 
+        // CHEATS tab — split-panel state
+        private float _cheatsSplitRatio = 0.35f;
+        private bool _cheatsSplitDragging;
+        private string _cheatsSelectedCategory = "survival";
+        private readonly TextInput _cheatsSearchInput = new TextInput("Search cheats...", 200);
+        private int _cheatsLeftScroll;
+        private int _cheatsLeftContentH;
+        private bool _cheatsLeftDrag;
+        private int _cheatsLeftDragY;
+        private int _cheatsLeftDragOff;
+        private int _cheatsRightScroll;
+        private int _cheatsRightContentH;
+        private bool _cheatsRightDrag;
+        private int _cheatsRightDragY;
+        private int _cheatsRightDragOff;
+
+        // PACKS tab — Pack Manager split-panel state
+        private float _packsSplitRatio = 0.35f;
+        private bool _packsSplitDragging;
+        private string _packsSelectedId;
+        private int _packsLeftScroll;
+        private int _packsRightScroll;
+        private int _packsLeftContentH;
+        private int _packsRightContentH;
+        private bool _packsLeftDrag;
+        private int _packsLeftDragY;
+        private int _packsLeftDragOff;
+        private bool _packsRightDrag;
+        private int _packsRightDragY;
+        private int _packsRightDragOff;
+        // PACKS tab — Add/Edit Item row state
+        private bool _packsAddingNewItem;
+        private int _packsEditingItemIdx = -1;
+        private readonly TextInput _packsItemId = new TextInput("Item ID...", 10);
+        private readonly TextInput _packsItemName = new TextInput("Item name...", 100);
+        private readonly TextInput _packsItemCount = new TextInput("Count...", 10);
+
+        // PACKS tab — Pack name/category editing
+        private bool _packsEditingName;
+        private readonly TextInput _packsNameInput = new TextInput("Pack name...", 100);
+        private bool _packsEditingCategory;
+        private readonly TextInput _packsCategoryInput = new TextInput("Category...", 50);
+
+        // PACKS tab — Name lookup results
+        private List<ItemEntry> _packsLookupResults = new List<ItemEntry>();
+
+        // PACKS tab — Save validation
+        private string _packsSaveError = "";
+
         // ---- Callbacks wired from Mod.cs ----
         // Cheats: Visual
         public Action OnFullBrightToggle;
@@ -67,7 +116,7 @@ namespace Plunder
         public Action OnMapRevealToggle;
         public Func<bool> GetMapRevealState;
 
-        // Cheats: OP Cheats
+        // Cheats: Player
         public Action OnGodModeToggle;
         public Func<bool> GetGodModeState;
         public Action OnInfiniteManaToggle;
@@ -101,6 +150,30 @@ namespace Plunder
         public Func<int> GetToolRangeMult;
         public Action<int> SetToolRangeMult;
 
+        // Cheats: World Actions
+        public Action OnNoGravestonesToggle;
+        public Func<bool> GetNoGravestonesState;
+        public Action OnNoDeathDropToggle;
+        public Func<bool> GetNoDeathDropState;
+        public Action OnKillAllEnemies;
+        public Action OnClearItems;
+        public Action OnClearProjectiles;
+
+        // Cheats: Environment
+        public Action OnTimePauseToggle;
+        public Func<bool> GetTimePausedState;
+        public Action OnSetDawn;
+        public Action OnSetNoon;
+        public Action OnSetDusk;
+        public Action OnSetMidnight;
+        public Action OnFastForwardDawn;
+        public Action OnToggleRain;
+        public Func<bool> GetRainingState;
+        public Action OnToggleBloodMoon;
+        public Func<bool> GetBloodMoonState;
+        public Action OnToggleEclipse;
+        public Func<bool> GetEclipseState;
+
         // Cheats: Movement
         public Action OnTeleportToggle;
         public Func<bool> GetTeleportState;
@@ -123,9 +196,21 @@ namespace Plunder
         public Func<int> GetCatchRerollMinRarity;
         public Action<int> SetCatchRerollMinRarity;
 
-        // Feats: Item Packs
+        // Packs: Item Packs
         public Func<IReadOnlyList<ItemPack>> GetItemPacks;
         public Action<string, int> OnSpawnPack;
+        public Func<string, string> OnExportPack;
+        public Func<string, ItemPack> OnImportPack;
+        public Func<string, int, List<ItemEntry>> OnSearchItems;
+        public Action<string, string, string, List<PackItem>> OnCreatePack;
+        public Action OnBuildCatalog;
+        public Func<string, bool> OnDeletePack;
+        public Func<string, int, int, string, bool> OnAddItemToPack;
+        public Func<string, int, bool> OnRemoveItemFromPack;
+        public Func<string, int, int, int, string, bool> OnUpdateItemInPack;
+        public Func<string, string, bool> OnRenamePack;
+        public Func<string, string, bool> OnUpdatePackCategory;
+        public Func<string, bool> OnResetBuiltInPack;
 
         // Config: Mod Menu jump
         public Action OnOpenModMenu;
@@ -144,21 +229,41 @@ namespace Plunder
             foreach (Tab t in Enum.GetValues(typeof(Tab)))
                 _scrollOffsets[t] = 0;
 
-            _sectionExpanded["opcheats"] = true;
-            _sectionExpanded["visual"] = true;
-            _sectionExpanded["movement"] = true;
-            _sectionExpanded["fishing"] = true;
-            _sectionExpanded["feat_essentials"] = true;
-            _sectionExpanded["feat_combat"] = true;
-            _sectionExpanded["feat_biomes"] = true;
-            _sectionExpanded["feat_resources"] = true;
-            _sectionExpanded["feat_utility"] = true;
+            _sectionExpanded["cheats_player"] = true;
+            _sectionExpanded["cheats_world"] = true;
+            _sectionExpanded["pack_spawn"] = true;
+            _sectionExpanded["pack_create"] = false;
+            _sectionExpanded["pack_edit"] = false;
+            _sectionExpanded["pack_import"] = false;
+            _sectionExpanded["pack_export"] = false;
+            _sectionExpanded["other_actions"] = true;
+            _sectionExpanded["other_debug"] = true;
+            _sectionExpanded["other_info"] = true;
             _sectionExpanded["cfg_keybinds"] = true;
             _sectionExpanded["cfg_panel"] = true;
+
+            _normalPanelWidth = config.PanelWidth;
         }
 
         public void Register() { _panel.RegisterDrawCallback(OnDraw); }
         public void Unregister() { _panel.UnregisterDrawCallback(); _panel.Close(); }
+
+        /// <summary>
+        /// Must be called during the Update phase (FrameEvents.OnPreUpdate) so that
+        /// focused TextInputs keep EnableTextInput() active across both Update and Draw.
+        /// Without this, Terraria's input system eats keystrokes before Draw reads them.
+        /// </summary>
+        public void Update()
+        {
+            if (!(_panel?.IsOpen ?? false)) return;
+
+            _cheatsSearchInput.Update();
+            _packsItemId.Update();
+            _packsItemName.Update();
+            _packsItemCount.Update();
+            _packsNameInput.Update();
+            _packsCategoryInput.Update();
+        }
 
         public void Open()
         {
@@ -166,6 +271,13 @@ namespace Plunder
             int y = _config.PanelY;
             if (x >= 0 && y >= 0) _panel.Open(x, y);
             else _panel.Open();
+
+            // Wide tabs auto-expand on open
+            if (_activeTab == Tab.Cheats || _activeTab == Tab.Packs)
+            {
+                if (_normalPanelWidth <= 0) _normalPanelWidth = _panel.Width;
+                _panel.Width = (int)(_normalPanelWidth * 1.75);
+            }
         }
 
         public void Close() { _panel.Close(); }
@@ -228,7 +340,7 @@ namespace Plunder
             return false;
         }
 
-            /// <summary>Checkbox at specific X position (no auto-advance), with optional tooltip.</summary>
+        /// <summary>Checkbox at specific X position (no auto-advance), with optional tooltip.</summary>
         private bool VCheckboxAt(ref StackLayout layout, int x, int width, int y, string label, bool isChecked, string tipTitle = null, string tipText = null, int height = 24)
         {
             if (!InView(y, height)) return false;
@@ -345,6 +457,80 @@ namespace Plunder
             VLabel(ref layout, text, UIColors.Text, height);
         }
 
+        /// <summary>Word-wrapped label — splits text into multiple lines if too wide for layout.</summary>
+        private void VLabelWrapped(ref StackLayout layout, string text, Color4 color, int lineHeight = 18)
+        {
+            int maxWidth = layout.Width;
+            var lines = WrapText(text, maxWidth);
+            foreach (var line in lines)
+            {
+                int y = layout.Advance(lineHeight);
+                if (InView(y, lineHeight))
+                {
+                    int textY = y + (lineHeight - 14) / 2;
+                    UIRenderer.DrawText(line, layout.X, textY, color);
+                }
+            }
+        }
+
+        private void VLabelWrapped(ref StackLayout layout, string text, int lineHeight = 18)
+        {
+            VLabelWrapped(ref layout, text, UIColors.Text, lineHeight);
+        }
+
+        /// <summary>Word-wrap text to fit within maxWidth pixels, using same algorithm as tooltips.</summary>
+        private static List<string> WrapText(string text, int maxWidth)
+        {
+            var lines = new List<string>();
+            if (string.IsNullOrEmpty(text))
+            {
+                lines.Add("");
+                return lines;
+            }
+
+            foreach (string paragraph in text.Split('\n'))
+            {
+                if (TextUtil.MeasureWidth(paragraph) <= maxWidth)
+                {
+                    lines.Add(paragraph);
+                    continue;
+                }
+
+                string remaining = paragraph;
+                while (TextUtil.MeasureWidth(remaining) > maxWidth)
+                {
+                    // Find last space that fits
+                    int breakAt = -1;
+                    for (int i = remaining.Length - 1; i > 0; i--)
+                    {
+                        if (remaining[i] == ' ' && TextUtil.MeasureWidth(remaining.Substring(0, i)) <= maxWidth)
+                        {
+                            breakAt = i;
+                            break;
+                        }
+                    }
+                    // No space found — force break at max fitting chars
+                    if (breakAt <= 0)
+                    {
+                        breakAt = remaining.Length;
+                        for (int i = 1; i < remaining.Length; i++)
+                        {
+                            if (TextUtil.MeasureWidth(remaining.Substring(0, i)) > maxWidth)
+                            {
+                                breakAt = Math.Max(1, i - 1);
+                                break;
+                            }
+                        }
+                    }
+                    lines.Add(remaining.Substring(0, breakAt));
+                    remaining = remaining.Substring(breakAt).TrimStart();
+                }
+                if (remaining.Length > 0)
+                    lines.Add(remaining);
+            }
+            return lines;
+        }
+
         private void VSectionHeader(ref StackLayout layout, string title, int height = 22)
         {
             int y = layout.Advance(height);
@@ -383,7 +569,10 @@ namespace Plunder
                 int ch = _panel.ContentHeight;
 
                 int contentY = cy + TabBarHeight + 4;
-                int contentH = ch - TabBarHeight - 4 - ResizeHandleHeight;
+                // Resize bar sits flush inside the 2px panel border (no gap on left/right/bottom)
+                int borderThickness = 2;
+                int handleTop = _panel.Y + _panel.Height - borderThickness - ResizeHandleHeight;
+                int contentH = handleTop - contentY;
                 if (contentH < 10) { _panel.EndDraw(); return; }
 
                 // Set virtual scroll view bounds
@@ -397,7 +586,7 @@ namespace Plunder
                 switch (_activeTab)
                 {
                     case Tab.Cheats: DrawCheatsTab(ref layout); break;
-                    case Tab.Feats: DrawFeatsTab(ref layout); break;
+                    case Tab.Packs: DrawPacksTab(ref layout); break;
                     case Tab.Other: DrawOtherTab(ref layout); break;
                     case Tab.Config: DrawConfigTab(ref layout); break;
                 }
@@ -408,10 +597,10 @@ namespace Plunder
                 UIRenderer.DrawRect(cx, cy, cw, TabBarHeight + 4, UIColors.PanelBg);
                 DrawCustomTabBar(cx, cy, cw, TabBarHeight);
 
-                // 3) Draw resize handle at bottom of panel
-                int handleY = cy + ch - ResizeHandleHeight;
-                UIRenderer.DrawRect(cx, handleY, cw, ResizeHandleHeight, UIColors.PanelBg);
-                DrawResizeHandle(cx, handleY, cw);
+                // 3) Draw resize handle flush inside panel border (no gap on left/right/bottom)
+                int barX = _panel.X + borderThickness;
+                int barW = _panel.Width - borderThickness * 2;
+                DrawResizeHandle(barX, handleTop, barW);
 
                 // 4) Handle scroll for content area
                 HandleScrollInput(cx, contentY, cw, contentH);
@@ -427,35 +616,72 @@ namespace Plunder
             }
         }
 
+        private const int DefaultPanelHeight = 600;
+
         private void DrawResizeHandle(int x, int y, int width)
         {
-            bool hover = WidgetInput.IsMouseOver(x, y, width, ResizeHandleHeight);
-            Color4 color = hover ? UIColors.TextHint : UIColors.Divider;
+            // Styled background bar (ModMenu section header style, but shorter)
+            UIRenderer.DrawRect(x, y, width, ResizeHandleHeight, UIColors.SectionBg);
+            UIRenderer.DrawRect(x, y, width, 1, UIColors.Divider);
 
+            bool barHover = WidgetInput.IsMouseOver(x, y, width, ResizeHandleHeight);
+
+            // Drag handle dots in center
+            Color4 dotColor = barHover ? UIColors.TextHint : UIColors.Divider;
             int cx = x + width / 2;
-            UIRenderer.DrawRect(cx - 12, y + 3, 24, 1, color);
-            UIRenderer.DrawRect(cx - 8, y + 5, 16, 1, color);
+            int dotY = y + ResizeHandleHeight / 2 - 1;
+            UIRenderer.DrawRect(cx - 12, dotY, 24, 1, dotColor);
+            UIRenderer.DrawRect(cx - 8, dotY + 2, 16, 1, dotColor);
 
-            if (hover && WidgetInput.MouseLeftClick && !_isResizing)
+            // "Reset" text button on the right (small text, no background, hover color animation)
+            string resetText = "Reset";
+            int resetW = (int)(TextUtil.MeasureWidth(resetText) * 0.75f);
+            int resetX = x + width - resetW - 10;
+            int resetTextY = y + (ResizeHandleHeight - 11) / 2;  // 11px = small font height (14 * 0.75)
+            bool resetHover = WidgetInput.IsMouseOver(resetX - 4, y, resetW + 8, ResizeHandleHeight);
+            Color4 resetColor = resetHover ? UIColors.Warning : UIColors.TextDim;
+            UIRenderer.DrawTextSmall(resetText, resetX, resetTextY, resetColor);
+
+            // Handle clicks — reset or resize drag
+            if (barHover && WidgetInput.MouseLeftClick)
             {
-                _isResizing = true;
-                _resizeStartY = WidgetInput.MouseY;
-                _resizeStartHeight = _panel.Height;
+                if (resetHover)
+                {
+                    _panel.Height = DefaultPanelHeight;
+                    _config.Set("panelHeight", DefaultPanelHeight);
+                }
+                else if (!_isResizing)
+                {
+                    _isResizing = true;
+                    _resizeStartY = WidgetInput.MouseY;
+                    _resizeStartHeight = _panel.Height;
+                }
                 WidgetInput.ConsumeClick();
             }
+
+            // Block all clicks from passing through the bar
+            if (barHover && WidgetInput.MouseRightClick)
+                WidgetInput.ConsumeRightClick();
+            if (barHover)
+                WidgetInput.ConsumeScroll();
         }
 
         private const int TabCharWidth = 11;
 
         private void DrawCustomTabBar(int x, int y, int width, int height)
         {
-            int tabCount = TabNames.Length;
+            var visibleTabs = new List<int>();
+            for (int i = 0; i < TabNames.Length; i++)
+                visibleTabs.Add(i);
+
+            int tabCount = visibleTabs.Count;
             int tabWidth = width / tabCount;
 
-            for (int i = 0; i < tabCount; i++)
+            for (int vi = 0; vi < tabCount; vi++)
             {
-                int tabX = x + i * tabWidth;
-                int tabW = (i == tabCount - 1) ? (width - i * tabWidth) : tabWidth - 2;
+                int i = visibleTabs[vi];
+                int tabX = x + vi * tabWidth;
+                int tabW = (vi == tabCount - 1) ? (width - vi * tabWidth) : tabWidth - 2;
                 bool isActive = i == (int)_activeTab;
                 bool hover = WidgetInput.IsMouseOver(tabX, y, tabW, height);
 
@@ -478,9 +704,23 @@ namespace Plunder
                 if (hover && WidgetInput.MouseLeftClick)
                 {
                     WidgetInput.ConsumeClick();
+                    Tab prevTab = _activeTab;
                     _activeTab = (Tab)i;
                     if (!_scrollOffsets.ContainsKey(_activeTab))
                         _scrollOffsets[_activeTab] = 0;
+
+                    // CHEATS and PACKS tabs expand width to 1.75x; leaving restores it
+                    bool wasWide = (prevTab == Tab.Cheats || prevTab == Tab.Packs);
+                    bool isWide = (_activeTab == Tab.Cheats || _activeTab == Tab.Packs);
+                    if (isWide && !wasWide)
+                    {
+                        _normalPanelWidth = _panel.Width;
+                        _panel.Width = (int)(_normalPanelWidth * 1.75);
+                    }
+                    else if (!isWide && wasWide && _normalPanelWidth > 0)
+                    {
+                        _panel.Width = _normalPanelWidth;
+                    }
                 }
             }
         }
@@ -521,554 +761,11 @@ namespace Plunder
             return expanded;
         }
 
-        // ============================================================
-        //  CHEATS TAB
-        // ============================================================
-
-        private void DrawCheatsTab(ref StackLayout layout)
-        {
-            // ---- OP CHEATS ----
-            if (DrawCollapsibleHeader(ref layout, "OP CHEATS", "opcheats"))
-            {
-                DrawOpCheatsSection(ref layout);
-            }
-
-            layout.Space(4);
-
-            // ---- VISUAL ---- compact checkboxes, 2 per row
-            if (DrawCollapsibleHeader(ref layout, "VISUAL", "visual"))
-            {
-                bool fullBright = GetFullBrightState?.Invoke() ?? false;
-                bool playerGlow = GetPlayerGlowState?.Invoke() ?? false;
-                bool mapReveal = GetMapRevealState?.Invoke() ?? false;
-
-                int hw = (layout.Width - 8) / 2;
-                int rowY = layout.Advance(24);
-
-                if (VCheckboxAt(ref layout, layout.X, hw, rowY, "Full Bright", fullBright,
-                    "Full Bright", "Removes all darkness and shadow.\nEverything is fully lit at all times."))
-                    OnFullBrightToggle?.Invoke();
-                if (VCheckboxAt(ref layout, layout.X + hw + 8, hw, rowY, "Player Glow", playerGlow,
-                    "Player Glow", "Emits a light aura around your character.\nUseful for exploring dark areas."))
-                    OnPlayerGlowToggle?.Invoke();
-
-                if (VCheckboxTip(ref layout, "Map Reveal", mapReveal,
-                    "Full Map Reveal", "Reveals the entire world map.\nRe-reveals every 10 seconds to catch changes."))
-                    OnMapRevealToggle?.Invoke();
-            }
-
-            layout.Space(4);
-
-            // ---- MOVEMENT ---- compact checkboxes with tooltips
-            if (DrawCollapsibleHeader(ref layout, "MOVEMENT", "movement"))
-            {
-                bool teleport = GetTeleportState?.Invoke() ?? false;
-                bool mapTp = GetMapTeleportState?.Invoke() ?? false;
-
-                if (VCheckboxTip(ref layout, "Teleport To Cursor", teleport,
-                    "Teleport To Cursor", "Press T to teleport to cursor position.\nRebindable in Config tab."))
-                    OnTeleportToggle?.Invoke();
-
-                if (VCheckboxTip(ref layout, "Map Click Teleport", mapTp,
-                    "Map Click Teleport", "Right-click on the fullscreen map\nto teleport to that location."))
-                    OnMapTeleportToggle?.Invoke();
-            }
-
-            layout.Space(4);
-
-            // ---- FISHING LUCK ----
-            if (DrawCollapsibleHeader(ref layout, "FISHING LUCK", "fishing"))
-            {
-                bool buffsOn = GetFishingBuffsState?.Invoke() ?? false;
-                if (VCheckboxTip(ref layout, "Auto Fishing Buffs", buffsOn,
-                    "Auto Fishing Buffs", "Automatically applies fishing buff potions.\nToggle individual potions below."))
-                    OnFishingBuffsToggle?.Invoke();
-
-                if (buffsOn)
-                {
-                    layout.Space(2);
-                    bool fp = GetAutoFishingPotion?.Invoke() ?? true;
-                    bool sp = GetAutoSonarPotion?.Invoke() ?? true;
-                    bool cp = GetAutoCratePotion?.Invoke() ?? true;
-
-                    // 3 checkboxes across, indented
-                    int indent = 20;
-                    int thirdW = (layout.Width - indent - 8) / 3;
-                    int subY = layout.Advance(24);
-
-                    if (VCheckboxAt(ref layout, layout.X + indent, thirdW, subY, "Fishing Pot", fp,
-                        "Fishing Potion", "Auto-applies the Fishing Potion buff\nfor increased fishing power."))
-                        SetAutoFishingPotion?.Invoke(!fp);
-                    if (VCheckboxAt(ref layout, layout.X + indent + thirdW + 4, thirdW, subY, "Sonar Pot", sp,
-                        "Sonar Potion", "Auto-applies the Sonar Potion buff\nto see what's on the hook before reeling in."))
-                        SetAutoSonarPotion?.Invoke(!sp);
-                    if (VCheckboxAt(ref layout, layout.X + indent + (thirdW + 4) * 2, thirdW, subY, "Crate Pot", cp,
-                        "Crate Potion", "Auto-applies the Crate Potion buff\nfor increased crate catch rate."))
-                        SetAutoCratePotion?.Invoke(!cp);
-                }
-
-                layout.Space(4);
-
-                // Fishing Power slider
-                int fpMult = GetFishingPowerMultiplier?.Invoke() ?? 1;
-                VLabel(ref layout, $"Fishing Power: {fpMult}x");
-                int sliderY = layout.Advance(22);
-                if (InView(sliderY, 22))
-                {
-                    int newFpMult = _fishingPowerSlider.Draw(
-                        layout.X, sliderY, layout.Width, 22, fpMult, 1, 10);
-                    if (newFpMult != _prevFishingPower)
-                    {
-                        _prevFishingPower = newFpMult;
-                        SetFishingPowerMultiplier?.Invoke(newFpMult);
-                    }
-                }
-
-                layout.Space(4);
-
-                bool legendary = GetLegendaryCratesState?.Invoke() ?? false;
-                if (VCheckboxTip(ref layout, "Legendary Crates Only", legendary,
-                    "Legendary Crates Only", "Re-rolls all catches until you get\na Legendary crate."))
-                    OnLegendaryCratesToggle?.Invoke();
-
-                layout.Space(4);
-
-                int minRarity = GetCatchRerollMinRarity?.Invoke() ?? 0;
-                string rarityLabel = minRarity == 0 ? "Off" :
-                    minRarity == 1 ? "Blue+" :
-                    minRarity == 2 ? "Green+" :
-                    minRarity == 3 ? "Orange+" :
-                    minRarity == 4 ? "LightRed+" : "Pink+";
-                VLabel(ref layout, $"Min Catch Rarity: {rarityLabel}");
-                int raritySliderY = layout.Advance(22);
-                if (InView(raritySliderY, 22))
-                {
-                    int newRarity = _catchRaritySlider.Draw(
-                        layout.X, raritySliderY, layout.Width, 22, minRarity, 0, 5);
-                    if (newRarity != _prevCatchRarity)
-                    {
-                        _prevCatchRarity = newRarity;
-                        SetCatchRerollMinRarity?.Invoke(newRarity);
-                    }
-                }
-            }
-        }
-
-        // ============================================================
-        //  OP CHEATS SECTION
-        // ============================================================
-
-        private void DrawOpCheatsSection(ref StackLayout layout)
-        {
-            bool godMode = GetGodModeState?.Invoke() ?? false;
-            bool infMana = GetInfiniteManaState?.Invoke() ?? false;
-            bool infFlight = GetInfiniteFlightState?.Invoke() ?? false;
-            bool infAmmo = GetInfiniteAmmoState?.Invoke() ?? false;
-
-            // Row 1: God Mode + Inf Mana
-            int hw = (layout.Width - 8) / 2;
-            int rowY = layout.Advance(24);
-            if (VCheckboxAt(ref layout, layout.X, hw, rowY, "God Mode", godMode,
-                "God Mode", "Full invincibility. HP stays max,\nall damage is blocked."))
-                OnGodModeToggle?.Invoke();
-            if (VCheckboxAt(ref layout, layout.X + hw + 8, hw, rowY, "Inf Mana", infMana,
-                "Infinite Mana", "Mana stays at maximum at all times."))
-                OnInfiniteManaToggle?.Invoke();
-
-            // Row 2: Inf Flight + Inf Ammo
-            rowY = layout.Advance(24);
-            if (VCheckboxAt(ref layout, layout.X, hw, rowY, "Inf Flight", infFlight,
-                "Infinite Flight", "Wing and rocket time never run out.\nFly indefinitely."))
-                OnInfiniteFlightToggle?.Invoke();
-            if (VCheckboxAt(ref layout, layout.X + hw + 8, hw, rowY, "Inf Ammo", infAmmo,
-                "Infinite Ammo", "Ammo is never consumed when shooting."))
-                OnInfiniteAmmoToggle?.Invoke();
-
-            // Row 3: Inf Breath + No Knockback
-            bool infBreath = GetInfiniteBreathState?.Invoke() ?? false;
-            bool noKb = GetNoKnockbackState?.Invoke() ?? false;
-            rowY = layout.Advance(24);
-            if (VCheckboxAt(ref layout, layout.X, hw, rowY, "Inf Breath", infBreath,
-                "Infinite Breath", "Breath meter stays full.\nNever drown underwater."))
-                OnInfiniteBreathToggle?.Invoke();
-            if (VCheckboxAt(ref layout, layout.X + hw + 8, hw, rowY, "No Knockback", noKb,
-                "No Knockback", "Player cannot be knocked back by enemies."))
-                OnNoKnockbackToggle?.Invoke();
-
-            // Row 4: No Fall Damage + No Tree Bombs
-            bool noFall = GetNoFallDamageState?.Invoke() ?? false;
-            bool noTreeBombs = GetNoTreeBombsState?.Invoke() ?? false;
-            rowY = layout.Advance(24);
-            if (VCheckboxAt(ref layout, layout.X, hw, rowY, "No Fall Dmg", noFall,
-                "No Fall Damage", "Prevents all fall damage."))
-                OnNoFallDamageToggle?.Invoke();
-            if (VCheckboxAt(ref layout, layout.X + hw + 8, hw, rowY, "No Tree Bombs", noTreeBombs,
-                "No Tree Bombs", "Prevents trees from spawning lit bombs\nin For The Worthy / Zenith worlds."))
-                OnNoTreeBombsToggle?.Invoke();
-
-            layout.Space(4);
-
-            // Minions: checkbox + slider
-            bool minions = GetMinionsEnabledState?.Invoke() ?? false;
-            int minionCount = GetMinionCount?.Invoke() ?? 0;
-            string minionLabel = minions
-                ? (minionCount == 0 ? "Minions: Infinite" : $"Minions: {minionCount} max")
-                : "Minions Override";
-            if (VCheckboxTip(ref layout, minionLabel, minions,
-                "Minions Override", "Override max minion slots.\n0 = Infinite, 1-20 = set cap."))
-                OnMinionsToggle?.Invoke();
-
-            if (minions)
-            {
-                int mcY = layout.Advance(22);
-                if (InView(mcY, 22))
-                {
-                    int newMc = _minionCountSlider.Draw(layout.X + 20, mcY, layout.Width - 20, 22, minionCount, 0, 20);
-                    if (newMc != minionCount)
-                        SetMinionCount?.Invoke(newMc);
-                }
-            }
-
-            layout.Space(4);
-
-            // Damage: checkbox + slider
-            bool dmgEnabled = GetDamageEnabledState?.Invoke() ?? false;
-            int dmgMult = GetDamageMult?.Invoke() ?? 0;
-            string dmgLabel = dmgEnabled
-                ? (dmgMult == 0 ? "Damage: One Hit Kill" : $"Damage: {dmgMult}x")
-                : "Damage Override";
-            if (VCheckboxTip(ref layout, dmgLabel, dmgEnabled,
-                "Damage Override", "Override attack damage.\n0 = One Hit Kill, 2-20 = multiplier."))
-                OnDamageToggle?.Invoke();
-
-            if (dmgEnabled)
-            {
-                int dmgY = layout.Advance(22);
-                if (InView(dmgY, 22))
-                {
-                    int newDmg = _damageMultSlider.Draw(layout.X + 20, dmgY, layout.Width - 20, 22, dmgMult, 0, 20);
-                    if (newDmg != dmgMult)
-                        SetDamageMult?.Invoke(newDmg);
-                }
-            }
-
-            layout.Space(4);
-
-            // Spawn Rate slider
-            int spawnRate = GetSpawnRateMult?.Invoke() ?? 1;
-            string spawnLabel = spawnRate == 0 ? "Spawn Rate: OFF (no spawns)"
-                : spawnRate == 1 ? "Spawn Rate: 1x (normal)"
-                : $"Spawn Rate: {spawnRate}x";
-            {
-                int lblY = layout.Advance(18);
-                if (InView(lblY, 18))
-                {
-                    bool lblHover = WidgetInput.IsMouseOver(layout.X, lblY, layout.Width, 18);
-                    if (lblHover)
-                        RichTooltip.Set("Spawn Rate Multiplier",
-                            "Controls how fast enemies spawn.\n" +
-                            "0 = No spawns at all.\n" +
-                            "1x = Normal spawn rate.\n" +
-                            $"{(spawnRate > 1 ? $"{spawnRate}x = Enemies spawn {spawnRate}x faster\nwith {spawnRate}x more allowed at once.\n" : "")}" +
-                            "Higher values may be less noticeable\nnear towns due to NPC safety zones.");
-                    string display = TextUtil.Truncate(spawnLabel, layout.Width);
-                    UIRenderer.DrawText(display, layout.X, lblY + (18 - 14) / 2, UIColors.Text);
-                }
-            }
-            int srY = layout.Advance(22);
-            if (InView(srY, 22))
-            {
-                int newSr = _spawnRateSlider.Draw(layout.X, srY, layout.Width, 22, spawnRate, 0, 20);
-                if (newSr != spawnRate)
-                    SetSpawnRateMult?.Invoke(newSr);
-            }
-
-            layout.Space(4);
-
-            // Run Speed slider
-            int runSpeed = GetRunSpeedMult?.Invoke() ?? 1;
-            string runLabel = runSpeed == 1 ? "Run Speed: 1x (normal)" : $"Run Speed: {runSpeed}x";
-            {
-                int lblY = layout.Advance(18);
-                if (InView(lblY, 18))
-                {
-                    bool lblHover = WidgetInput.IsMouseOver(layout.X, lblY, layout.Width, 18);
-                    if (lblHover)
-                        RichTooltip.Set("Run Speed Multiplier",
-                            "Multiplies your movement speed.\n" +
-                            "1x = Normal run speed (100%).\n" +
-                            $"{(runSpeed > 1 ? $"{runSpeed}x = {runSpeed * 100}% of normal speed.\n" : "")}" +
-                            "Affects max run speed and acceleration.");
-                    string display = TextUtil.Truncate(runLabel, layout.Width);
-                    UIRenderer.DrawText(display, layout.X, lblY + (18 - 14) / 2, UIColors.Text);
-                }
-            }
-            int rsY = layout.Advance(22);
-            if (InView(rsY, 22))
-            {
-                int newRs = _runSpeedSlider.Draw(layout.X, rsY, layout.Width, 22, runSpeed, 1, 10);
-                if (newRs != runSpeed)
-                    SetRunSpeedMult?.Invoke(newRs);
-            }
-
-            layout.Space(4);
-
-            // Tool Range — checkbox + slider
-            int toolRange = GetToolRangeMult?.Invoke() ?? 1;
-            bool toolRangeOn = GetToolRangeEnabledState?.Invoke() ?? false;
-            string trLabel = !toolRangeOn ? "Tool Range Override"
-                : toolRange <= 1 ? "Tool Range: 1x (normal)"
-                : $"Tool Range: {toolRange}x";
-            {
-                int lblY = layout.Advance(18);
-                if (InView(lblY, 18))
-                {
-                    bool lblHover = WidgetInput.IsMouseOver(layout.X, lblY, layout.Width, 18);
-                    if (lblHover)
-                        RichTooltip.Set("Tool Range Multiplier",
-                            "Multiplies how far your tools can reach.\n" +
-                            "Affects pickaxes, axes, hammers, and\nblock placement distance.\n" +
-                            "1x = Normal range.\n" +
-                            $"{(toolRange > 1 ? $"{toolRange}x = {toolRange}x further reach.\n" : "")}" +
-                            "Great for mining from a safe distance.");
-                    string display = TextUtil.Truncate(trLabel, layout.Width);
-                    UIRenderer.DrawText(display, layout.X, lblY + (18 - 14) / 2, UIColors.Text);
-                }
-            }
-            if (VCheckboxTip(ref layout, "Enabled", toolRangeOn,
-                "Enable Tool Range Override", "Toggle extended tool reach on/off."))
-                OnToolRangeToggle?.Invoke();
-            if (toolRangeOn)
-            {
-                int trY = layout.Advance(22);
-                if (InView(trY, 22))
-                {
-                    int newTr = _toolRangeSlider.Draw(layout.X, trY, layout.Width, 22, toolRange, 1, 10);
-                    if (newTr != toolRange)
-                        SetToolRangeMult?.Invoke(newTr);
-                }
-            }
-        }
-
-        // ============================================================
-        //  FEATS TAB — organized by category, compact buttons, tooltips
-        // ============================================================
-
-        private void DrawFeatsTab(ref StackLayout layout)
-        {
-            // Multiplier slider at the top
-            VLabel(ref layout, $"Spawn Multiplier: {_packMultiplier}x" +
-                (_packMultiplier > 1 ? " (stackable items only)" : ""), UIColors.TextHint);
-            int multY = layout.Advance(22);
-            if (InView(multY, 22))
-            {
-                _packMultiplier = _packMultiplierSlider.Draw(
-                    layout.X, multY, layout.Width, 22, _packMultiplier, 1, 20);
-            }
-
-            layout.Space(6);
-
-            var packs = GetItemPacks?.Invoke();
-            if (packs == null || packs.Count == 0)
-            {
-                VLabel(ref layout, "No item packs available", UIColors.TextDim);
-                return;
-            }
-
-            // Group packs by category
-            var categories = packs
-                .GroupBy(p => p.Category ?? "General")
-                .OrderBy(g => CategoryOrder(g.Key));
-
-            foreach (var group in categories)
-            {
-                string catKey = "feat_" + group.Key.ToLower().Replace(" ", "_");
-                if (DrawCollapsibleHeader(ref layout, group.Key.ToUpper(), catKey))
-                {
-                    DrawPackButtons(ref layout, group.ToList());
-                }
-                layout.Space(2);
-            }
-        }
-
-        private static int CategoryOrder(string cat)
-        {
-            switch (cat)
-            {
-                case "Essentials": return 0;
-                case "Combat": return 1;
-                case "Biomes": return 2;
-                case "Resources": return 3;
-                case "Building": return 4;
-                case "Utility": return 5;
-                default: return 6;
-            }
-        }
-
-        private void DrawPackButtons(ref StackLayout layout, List<ItemPack> packs)
-        {
-            const int btnHeight = 26;
-            const int gap = 6;
-
-            // Lay out buttons in rows, 2 per row
-            for (int i = 0; i < packs.Count; i += 2)
-            {
-                int hw = (layout.Width - gap) / 2;
-                int rowY = layout.Advance(btnHeight);
-
-                // First button
-                var pack1 = packs[i];
-                string tip1 = BuildPackTooltip(pack1, _packMultiplier);
-                if (VButtonTip(layout.X, rowY, hw, btnHeight, pack1.Name, pack1.Name, tip1))
-                    OnSpawnPack?.Invoke(pack1.Id, _packMultiplier);
-
-                // Second button (if exists)
-                if (i + 1 < packs.Count)
-                {
-                    var pack2 = packs[i + 1];
-                    string tip2 = BuildPackTooltip(pack2, _packMultiplier);
-                    if (VButtonTip(layout.X + hw + gap, rowY, hw, btnHeight, pack2.Name, pack2.Name, tip2))
-                        OnSpawnPack?.Invoke(pack2.Id, _packMultiplier);
-                }
-            }
-        }
-
-        private string BuildPackTooltip(ItemPack pack, int multiplier)
-        {
-            string tip = pack.Description;
-            if (multiplier > 1)
-                tip += $"\n({multiplier}x multiplier applied to stackable items)";
-            tip += "\n\nItems:";
-            foreach (var item in pack.Items)
-            {
-                string name = item.Name ?? $"Item #{item.ItemId}";
-                int displayStack = item.Stack;
-                if (multiplier > 1 && item.Stack > 1)
-                    displayStack = item.Stack * multiplier;
-                if (displayStack > 1)
-                    tip += $"\n  {name} x{displayStack}";
-                else
-                    tip += $"\n  {name}";
-            }
-            return tip;
-        }
-
-        // ============================================================
-        //  OTHER TAB
-        // ============================================================
-
-        private void DrawOtherTab(ref StackLayout layout)
-        {
-            VSectionHeader(ref layout, "QUICK ACTIONS");
-
-            if (VButton(ref layout, "Open Mod Menu (F6)", 28))
-                OnOpenModMenu?.Invoke();
-
-            layout.Space(8);
-            VSectionHeader(ref layout, "DEBUG");
-
-            bool mapTpDebug = MapTeleport.DebugMode;
-            if (VCheckboxTip(ref layout, "Map Teleport Debug", mapTpDebug,
-                "Map Teleport Debug", "Shows coordinate conversion values in chat\nwhen you right-click the map to teleport.\nUse to diagnose teleport accuracy issues."))
-                MapTeleport.ToggleDebug();
-
-            layout.Space(8);
-            VSectionHeader(ref layout, "INFO");
-            VLabel(ref layout, $"Plunder v{_config.ModVersion}");
-            VLabel(ref layout, "Author: Zero", UIColors.TextHint);
-        }
-
-        // ============================================================
-        //  CONFIG TAB
-        // ============================================================
-
-        private void DrawConfigTab(ref StackLayout layout)
-        {
-            // ---- KEYBINDS ----
-            if (DrawCollapsibleHeader(ref layout, "KEYBINDS", "cfg_keybinds"))
-            {
-                VLabel(ref layout, "Current bindings (edit in Mod Menu)", UIColors.TextHint);
-                layout.Space(2);
-
-                DrawKeybindRow(ref layout, "Toggle Panel", "]");
-                DrawKeybindRow(ref layout, "Full Bright", "Y");
-                DrawKeybindRow(ref layout, "Player Glow", null);
-                DrawKeybindRow(ref layout, "Toggle Teleport", "NumPad4");
-                DrawKeybindRow(ref layout, "Teleport", "T");
-                DrawKeybindRow(ref layout, "Fishing Buffs", null);
-                DrawKeybindRow(ref layout, "Map Click Teleport", null);
-
-                layout.Space(4);
-                if (VButton(ref layout, "Open Keybind Settings (F6)", 26))
-                    OnOpenModMenu?.Invoke();
-            }
-
-            layout.Space(4);
-
-            // ---- PANEL SETTINGS ----
-            if (DrawCollapsibleHeader(ref layout, "PANEL SETTINGS", "cfg_panel"))
-            {
-                // Panel Width — read from panel directly for immediate feedback
-                int pw = _panel.Width;
-                VLabel(ref layout, $"Panel Width: {pw}");
-                int pwY = layout.Advance(22);
-                if (InView(pwY, 22))
-                {
-                    int newPw = _panelWidthSlider.Draw(layout.X, pwY, layout.Width, 22, pw, 300, 600);
-                    if (newPw != pw)
-                    {
-                        _panel.Width = newPw;
-                        _config.Set("panelWidth", newPw);
-                    }
-                }
-
-                layout.Space(2);
-
-                // Panel Height — read from panel directly for immediate feedback
-                int ph = _panel.Height;
-                VLabel(ref layout, $"Panel Height: {ph}");
-                int phY = layout.Advance(22);
-                if (InView(phY, 22))
-                {
-                    int newPh = _panelHeightSlider.Draw(layout.X, phY, layout.Width, 22, ph, MinPanelHeight, MaxPanelHeight);
-                    if (newPh != ph)
-                    {
-                        _panel.Height = newPh;
-                        _config.Set("panelHeight", newPh);
-                    }
-                }
-
-                layout.Space(6);
-
-                bool showOnLoad = _config.ShowPanelOnWorldLoad;
-                if (VCheckbox(ref layout, "Show Panel On World Load", showOnLoad))
-                    _config.Set("showPanelOnWorldLoad", !showOnLoad);
-
-                layout.Space(2);
-                VLabel(ref layout, "Changes are saved automatically.", UIColors.TextHint);
-            }
-        }
-
-        private void DrawKeybindRow(ref StackLayout layout, string label, string key)
-        {
-            int y = layout.Advance(20);
-            if (!InView(y, 20)) return;
-
-            int textY = y + (20 - 14) / 2;
-
-            bool unbound = key == null;
-            string display = unbound ? "(unbound)" : key;
-            Color4 keyColor = unbound ? UIColors.TextHint : new Color4(255, 255, 180, 255);
-
-            int keyWidth = UIRenderer.MeasureText(display);
-            int keyX = layout.X + layout.Width - keyWidth - 4;
-
-            // Truncate label so it doesn't overlap the key binding
-            int labelMaxWidth = layout.Width - keyWidth - 16;
-            string truncLabel = TextUtil.Truncate(label, labelMaxWidth);
-            UIRenderer.DrawText(truncLabel, layout.X + 4, textY, UIColors.TextDim);
-            UIRenderer.DrawText(display, keyX, textY, keyColor);
-        }
+        // Tab drawing methods are in partial class files:
+        //   PlunderPanel.Cheats.cs  — DrawCheatsTab, DrawPlayerSection, DrawWorldSection
+        //   PlunderPanel.Packs.cs   — DrawPacksTab, Pack editor panels, DrawSubScrollbar
+        //   PlunderPanel.Other.cs   — DrawOtherTab
+        //   PlunderPanel.Config.cs  — DrawConfigTab, DrawKeybindRow
 
         // ============================================================
         //  SCROLL INPUT

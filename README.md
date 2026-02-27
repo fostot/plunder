@@ -4,7 +4,7 @@ A modular Terraria companion mod for the [TerrariaModder](https://github.com/ter
 
 > **Platform:** TerrariaModder (Harmony-based mod injection)
 > **Framework:** .NET Framework 4.8
-> **Author:** Zero
+> **Author:** Fostot
 
 ---
 

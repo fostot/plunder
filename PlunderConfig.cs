@@ -43,6 +43,13 @@ namespace Plunder
         public bool OpToolRangeEnabled { get; private set; }
         public int OpToolRangeMult { get; private set; }
 
+        // ---- Cheats: World Actions ----
+        public bool NoGravestones { get; private set; }
+        public bool NoDeathDrop { get; private set; }
+
+        // ---- Developer ----
+        public bool DevMode { get; private set; }
+
         // ---- Cheats: Fishing ----
         public bool FishingBuffsEnabled { get; private set; }
         public bool AutoFishingPotion { get; private set; }
@@ -78,6 +85,9 @@ namespace Plunder
             PanelX = cfg.Get<int>("panelX", -1);
             PanelY = cfg.Get<int>("panelY", -1);
 
+            // Developer
+            DevMode = cfg.Get<bool>("devMode", false);
+
             // Cheats: Visual
             FullBrightEnabled = cfg.Get<bool>("fullBrightEnabled", false);
             PlayerGlowEnabled = cfg.Get<bool>("playerGlowEnabled", false);
@@ -104,6 +114,10 @@ namespace Plunder
             OpRunSpeedMult = cfg.Get<int>("runSpeedMult", 1);
             OpToolRangeEnabled = cfg.Get<bool>("toolRangeEnabled", false);
             OpToolRangeMult = cfg.Get<int>("toolRangeMult", 1);
+
+            // Cheats: World Actions
+            NoGravestones = cfg.Get<bool>("noGravestones", false);
+            NoDeathDrop = cfg.Get<bool>("noDeathDrop", false);
 
             // Cheats: Fishing
             FishingBuffsEnabled = cfg.Get<bool>("fishingBuffsEnabled", false);

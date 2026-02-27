@@ -20,7 +20,7 @@ namespace Plunder
         private static FieldInfo _myPlayerField;
         private static FieldInfo _playerArrayField;
         private static FieldInfo _gameMenuField;
-        private static FieldInfo _mouseWorldField; // Main.MouseWorld (Vector2)
+        private static FieldInfo _mouseWorldField; // Main.MouseWorld (Vector2) — fallback only
         private static FieldInfo _positionField;   // Entity.position (Vector2)
         private static FieldInfo _velocityField;   // Entity.velocity (Vector2)
         private static FieldInfo _fallStartField;  // Player.fallStart
@@ -32,6 +32,25 @@ namespace Plunder
         private static PropertyInfo _mouseWorldProp;
         private static MethodInfo _teleportMethod; // Player.Teleport(Vector2, int, int)
         private static Type _vector2Type;
+
+        // Screen / mouse — raw values bypassing SetZoom_World (same fix as MapTeleport)
+        private static FieldInfo _screenPositionField;    // Main.screenPosition (Vector2)
+        private static FieldInfo _screenWidthField;       // Main.screenWidth (int)
+        private static FieldInfo _screenHeightField;      // Main.screenHeight (int)
+        private static Type _playerInputType;
+        private static PropertyInfo _piMouseXProp;        // PlayerInput.MouseX
+        private static PropertyInfo _piMouseYProp;        // PlayerInput.MouseY
+        private static FieldInfo _piMouseXField;
+        private static FieldInfo _piMouseYField;
+        private static PropertyInfo _piOrigScreenWProp;   // PlayerInput.OriginalScreenWidth
+        private static PropertyInfo _piOrigScreenHProp;   // PlayerInput.OriginalScreenHeight
+        private static FieldInfo _piOrigScreenWField;
+        private static FieldInfo _piOrigScreenHField;
+
+        // Zoom — needed when keybind fires before SetZoom_World adjusts Main fields
+        private static FieldInfo _gameZoomTargetField;    // Main.GameZoomTarget (float)
+        private static FieldInfo _forcedMinZoomField;     // Main.ForcedMinimumZoom (float)
+
         private static bool _reflectionReady;
 
         public static void Initialize(ILogger log, bool defaultState)
@@ -78,18 +97,68 @@ namespace Plunder
                 var players = (Array)_playerArrayField.GetValue(null);
                 var player = players.GetValue(myPlayer);
 
-                // Get mouse world position
-                object mouseWorld = _mouseWorldProp?.GetValue(null)
-                    ?? _mouseWorldField?.GetValue(null);
-
-                if (mouseWorld == null)
+                // Compute mouse world position from raw PlayerInput values
+                // to bypass SetZoom_World transforms.
+                //
+                // Two cases depending on when the keybind fires in the frame:
+                // 1) AFTER SetZoom_World: curScreenW < origScreenW, screenPos is zoom-adjusted
+                //    → ratio formula works: worldPos = screenPos + rawMouse * (curScreenW / origScreenW)
+                // 2) BEFORE SetZoom_World: curScreenW == origScreenW, screenPos is NOT zoom-adjusted
+                //    → must manually account for game zoom to get correct world position
+                float mouseX, mouseY;
+                if (_screenPositionField != null && _screenWidthField != null)
                 {
-                    _log.Warn("TeleportToCursor: Could not get mouse world position");
-                    return;
-                }
+                    object screenPos = _screenPositionField.GetValue(null);
+                    float screenPosX = (float)_vec2XField.GetValue(screenPos);
+                    float screenPosY = (float)_vec2YField.GetValue(screenPos);
 
-                float mouseX = (float)_vec2XField.GetValue(mouseWorld);
-                float mouseY = (float)_vec2YField.GetValue(mouseWorld);
+                    int curScreenW = (int)_screenWidthField.GetValue(null);
+                    int curScreenH = (int)_screenHeightField.GetValue(null);
+                    int rawMouseX = GetRawMouseX(0);
+                    int rawMouseY = GetRawMouseY(0);
+                    int origScreenW = GetOrigScreenWidth(curScreenW);
+                    int origScreenH = GetOrigScreenHeight(curScreenH);
+
+                    if (curScreenW < origScreenW)
+                    {
+                        // SetZoom_World already applied — screenPos and screenWidth are zoom-adjusted.
+                        // Standard formula: worldPos = screenPos + rawMouse * (screenW / origScreenW)
+                        mouseX = screenPosX + rawMouseX * ((float)curScreenW / origScreenW);
+                        mouseY = screenPosY + rawMouseY * ((float)curScreenH / origScreenH);
+                    }
+                    else
+                    {
+                        // SetZoom_World NOT applied — screenWidth == origScreenWidth.
+                        // Must manually account for game zoom.
+                        float zoom = GetGameZoom();
+                        if (zoom <= 0f) zoom = 1f;
+
+                        // Visible world area with zoom (zoom > 1 means you see less)
+                        float visibleW = origScreenW / zoom;
+                        float visibleH = origScreenH / zoom;
+
+                        // Zoom centers the view — adjust screenPosition accordingly
+                        float adjPosX = screenPosX + (origScreenW - visibleW) * 0.5f;
+                        float adjPosY = screenPosY + (origScreenH - visibleH) * 0.5f;
+
+                        // Map raw mouse pixel to world position within the visible area
+                        mouseX = adjPosX + rawMouseX * (visibleW / origScreenW);
+                        mouseY = adjPosY + rawMouseY * (visibleH / origScreenH);
+                    }
+                }
+                else
+                {
+                    // Fallback to Main.MouseWorld if raw values unavailable
+                    object mouseWorld = _mouseWorldProp?.GetValue(null)
+                        ?? _mouseWorldField?.GetValue(null);
+                    if (mouseWorld == null)
+                    {
+                        _log.Warn("TeleportToCursor: Could not get mouse world position");
+                        return;
+                    }
+                    mouseX = (float)_vec2XField.GetValue(mouseWorld);
+                    mouseY = (float)_vec2YField.GetValue(mouseWorld);
+                }
 
                 // Get actual player dimensions (default 20x42 if reflection fails)
                 int pw = 20, ph = 42;
@@ -173,19 +242,57 @@ namespace Plunder
                     return false;
                 }
 
-                _myPlayerField = _mainType.GetField("myPlayer",
-                    BindingFlags.Public | BindingFlags.Static);
-                _playerArrayField = _mainType.GetField("player",
-                    BindingFlags.Public | BindingFlags.Static);
-                _gameMenuField = _mainType.GetField("gameMenu",
-                    BindingFlags.Public | BindingFlags.Static);
+                var pubStatic = BindingFlags.Public | BindingFlags.Static;
+                var allStatic = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
 
-                // Main.MouseWorld - could be property or field
-                _mouseWorldProp = _mainType.GetProperty("MouseWorld",
-                    BindingFlags.Public | BindingFlags.Static);
+                _myPlayerField = _mainType.GetField("myPlayer", pubStatic);
+                _playerArrayField = _mainType.GetField("player", pubStatic);
+                _gameMenuField = _mainType.GetField("gameMenu", pubStatic);
+
+                // Main.screenPosition, screenWidth, screenHeight — for raw coordinate math
+                _screenPositionField = _mainType.GetField("screenPosition", pubStatic);
+                _screenWidthField = _mainType.GetField("screenWidth", pubStatic);
+                _screenHeightField = _mainType.GetField("screenHeight", pubStatic);
+
+                // PlayerInput — raw mouse & screen values (bypasses SetZoom_World)
+                _playerInputType = Type.GetType("Terraria.GameInput.PlayerInput, Terraria")
+                    ?? asm.GetType("Terraria.GameInput.PlayerInput");
+
+                if (_playerInputType != null)
+                {
+                    _piMouseXProp = _playerInputType.GetProperty("MouseX", allStatic);
+                    _piMouseYProp = _playerInputType.GetProperty("MouseY", allStatic);
+                    if (_piMouseXProp == null)
+                        _piMouseXField = _playerInputType.GetField("MouseX", allStatic);
+                    if (_piMouseYProp == null)
+                        _piMouseYField = _playerInputType.GetField("MouseY", allStatic);
+
+                    _piOrigScreenWProp = _playerInputType.GetProperty("OriginalScreenWidth", allStatic);
+                    _piOrigScreenHProp = _playerInputType.GetProperty("OriginalScreenHeight", allStatic);
+                    if (_piOrigScreenWProp == null)
+                        _piOrigScreenWField = _playerInputType.GetField("OriginalScreenWidth", allStatic);
+                    if (_piOrigScreenHProp == null)
+                        _piOrigScreenHField = _playerInputType.GetField("OriginalScreenHeight", allStatic);
+
+                    bool hasRawMouse = _piMouseXProp != null || _piMouseXField != null;
+                    bool hasRawScreen = _piOrigScreenWProp != null || _piOrigScreenWField != null;
+                    _log.Info($"TeleportToCursor: PlayerInput found — rawMouse={hasRawMouse}, rawScreen={hasRawScreen}");
+                }
+                else
+                {
+                    _log.Warn("TeleportToCursor: PlayerInput type not found — will use Main.MouseWorld (may be zoomed)");
+                }
+
+                // Main.GameZoomTarget / ForcedMinimumZoom — needed when keybind fires
+                // before SetZoom_World adjusts Main.screenWidth/screenPosition
+                _gameZoomTargetField = _mainType.GetField("GameZoomTarget", pubStatic);
+                _forcedMinZoomField = _mainType.GetField("ForcedMinimumZoom", pubStatic);
+                _log.Info($"TeleportToCursor: Zoom fields — GameZoomTarget={_gameZoomTargetField != null}, ForcedMinimumZoom={_forcedMinZoomField != null}");
+
+                // Main.MouseWorld — fallback only if PlayerInput unavailable
+                _mouseWorldProp = _mainType.GetProperty("MouseWorld", pubStatic);
                 if (_mouseWorldProp == null)
-                    _mouseWorldField = _mainType.GetField("MouseWorld",
-                        BindingFlags.Public | BindingFlags.Static);
+                    _mouseWorldField = _mainType.GetField("MouseWorld", pubStatic);
 
                 // Entity.position, Entity.velocity (Vector2 structs)
                 var searchType = entityType ?? _playerType;
@@ -245,6 +352,69 @@ namespace Plunder
                 _log.Error($"TeleportToCursor: Reflection error - {ex.Message}");
                 return false;
             }
+        }
+
+        private static int GetRawMouseX(int fallback)
+        {
+            try
+            {
+                if (_piMouseXProp != null) return (int)_piMouseXProp.GetValue(null, null);
+                if (_piMouseXField != null) return (int)_piMouseXField.GetValue(null);
+            }
+            catch { }
+            return fallback;
+        }
+
+        private static int GetRawMouseY(int fallback)
+        {
+            try
+            {
+                if (_piMouseYProp != null) return (int)_piMouseYProp.GetValue(null, null);
+                if (_piMouseYField != null) return (int)_piMouseYField.GetValue(null);
+            }
+            catch { }
+            return fallback;
+        }
+
+        private static int GetOrigScreenWidth(int fallback)
+        {
+            try
+            {
+                if (_piOrigScreenWProp != null) return (int)_piOrigScreenWProp.GetValue(null, null);
+                if (_piOrigScreenWField != null) return (int)_piOrigScreenWField.GetValue(null);
+            }
+            catch { }
+            return fallback;
+        }
+
+        private static int GetOrigScreenHeight(int fallback)
+        {
+            try
+            {
+                if (_piOrigScreenHProp != null) return (int)_piOrigScreenHProp.GetValue(null, null);
+                if (_piOrigScreenHField != null) return (int)_piOrigScreenHField.GetValue(null);
+            }
+            catch { }
+            return fallback;
+        }
+
+        /// <summary>
+        /// Get the effective game zoom factor. Uses max(GameZoomTarget, ForcedMinimumZoom)
+        /// to match what SetZoom_World applies.
+        /// </summary>
+        private static float GetGameZoom()
+        {
+            float zoom = 1f;
+            float forced = 1f;
+            try
+            {
+                if (_gameZoomTargetField != null)
+                    zoom = (float)_gameZoomTargetField.GetValue(null);
+                if (_forcedMinZoomField != null)
+                    forced = (float)_forcedMinZoomField.GetValue(null);
+            }
+            catch { }
+            return Math.Max(zoom, forced);
         }
 
         private static void ShowMessage(string msg, bool enabled)

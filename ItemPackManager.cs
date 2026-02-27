@@ -26,6 +26,16 @@ namespace Plunder
     }
 
     /// <summary>
+    /// Represents an item from the game's item catalog (for search/browse).
+    /// </summary>
+    public class ItemEntry
+    {
+        public int Id;
+        public string Name;
+        public int MaxStack;
+    }
+
+    /// <summary>
     /// Represents a collection of items that can be spawned together.
     /// </summary>
     public class ItemPack
@@ -59,6 +69,7 @@ namespace Plunder
         private readonly ILogger _log;
         private readonly string _packsDir;
         private readonly List<ItemPack> _packs = new List<ItemPack>();
+        private readonly Dictionary<string, List<PackItem>> _builtInDefaults = new Dictionary<string, List<PackItem>>();
 
         // Reflection cache
         private static Type _mainType;
@@ -72,11 +83,18 @@ namespace Plunder
         private static FieldInfo _itemPrefixField;
         private static FieldInfo _itemMaxStackField;
         private static FieldInfo _itemNameField;
+        private static PropertyInfo _itemNameProp;
         private static MethodInfo _itemSetDefaultsMethod;
         private static MethodInfo _quickSpawnItemMethod;
         private static bool _reflectionReady;
 
+        // Item catalog
+        private List<ItemEntry> _itemCatalog;
+        private bool _catalogBuilt;
+
         public IReadOnlyList<ItemPack> Packs => _packs;
+        public IReadOnlyList<ItemEntry> ItemCatalog => _itemCatalog;
+        public bool CatalogReady => _catalogBuilt;
 
         public ItemPackManager(ILogger log, string modsDir)
         {
@@ -556,6 +574,168 @@ namespace Plunder
                 new PackItem(305, 5, "Gravitation Potion"),
             });
             _packs.Add(mobility);
+
+            var rainbowUtil = new ItemPack("rainbow-utility", "Rainbow Utility",
+                "Rainbow mounts, dyes, and accessories",
+                "Plunder", true, "Utility");
+            rainbowUtil.Items.AddRange(new[]
+            {
+                new PackItem(3260, 1, "Blessed Apple"),
+                new PackItem(4981, 1, "Gelatinous Pillion"),
+                new PackItem(1066, 3, "Rainbow Dye"),
+                new PackItem(1067, 3, "Intense Rainbow Dye"),
+                new PackItem(2870, 3, "Living Rainbow Dye"),
+                new PackItem(3307, 1, "Rainbow String"),
+                new PackItem(761, 1, "Fairy Wings"),
+            });
+            _packs.Add(rainbowUtil);
+
+            // ================================================================
+            //  BUILDING — RAINBOW
+            // ================================================================
+
+            var rainbowBuild = new ItemPack("build-rainbow", "Rainbow House",
+                "Rainbow bricks, crystal blocks, disco lights, and party decor",
+                "Plunder", true, "Building");
+            rainbowBuild.Items.AddRange(new[]
+            {
+                new PackItem(662, 999, "Rainbow Brick"),
+                new PackItem(663, 999, "Rainbow Brick Wall"),
+                new PackItem(3234, 999, "Crystal Block"),
+                new PackItem(3238, 999, "Crystal Block Wall"),
+                new PackItem(3045, 200, "Rainbow Torch"),
+                new PackItem(488, 5, "Disco Ball"),
+                new PackItem(3747, 1, "Party Center"),
+                new PackItem(3742, 1, "Silly Balloon Machine"),
+                new PackItem(1449, 1, "Bubble Machine"),
+                new PackItem(106, 99, "Wood Platform"),
+            });
+            _packs.Add(rainbowBuild);
+
+            // ================================================================
+            //  BIOMES — RAINBOW / HALLOW
+            // ================================================================
+
+            var hallow = new ItemPack("hallow", "Hallow Rainbow",
+                "Hallowed blocks, pearlwood, crystal shards, and rainbow gear",
+                "Plunder", true, "Biomes");
+            hallow.Items.AddRange(new[]
+            {
+                new PackItem(409, 999, "Pearlstone Block"),
+                new PackItem(621, 999, "Pearlwood"),
+                new PackItem(412, 999, "Pearlstone Brick"),
+                new PackItem(502, 99, "Crystal Shard"),
+                new PackItem(501, 99, "Pixie Dust"),
+                new PackItem(526, 30, "Unicorn Horn"),
+                new PackItem(1225, 30, "Hallowed Bar"),
+                new PackItem(369, 10, "Hallowed Seeds"),
+                new PackItem(4387, 99, "Hallowed Torch"),
+                new PackItem(662, 200, "Rainbow Brick"),
+            });
+            _packs.Add(hallow);
+
+            // ================================================================
+            //  COMBAT — RAINBOW
+            // ================================================================
+
+            var rainbowCombat = new ItemPack("rainbow-combat", "Rainbow Arsenal",
+                "Prismatic and rainbow weapons for colorful destruction",
+                "Plunder", true, "Combat");
+            rainbowCombat.Items.AddRange(new[]
+            {
+                new PackItem(495, 1, "Rainbow Rod"),
+                new PackItem(1260, 1, "Rainbow Gun"),
+                new PackItem(3571, 1, "Rainbow Crystal Staff"),
+                new PackItem(3541, 1, "Last Prism"),
+                new PackItem(856, 1, "Unicorn on a Stick"),
+                new PackItem(1000, 1, "Confetti Gun"),
+                new PackItem(3369, 1, "Confetti Cannon"),
+                new PackItem(499, 10, "Greater Healing Potion"),
+                new PackItem(500, 10, "Greater Mana Potion"),
+            });
+            _packs.Add(rainbowCombat);
+
+            // ================================================================
+            //  DYES
+            // ================================================================
+
+            var basicDyes = new ItemPack("dye-basic", "Basic Dyes",
+                "Standard color dyes for armor and accessories",
+                "Plunder", true, "Dyes");
+            basicDyes.Items.AddRange(new[]
+            {
+                new PackItem(1007, 3, "Red Dye"),
+                new PackItem(1008, 3, "Orange Dye"),
+                new PackItem(1009, 3, "Yellow Dye"),
+                new PackItem(1010, 3, "Lime Dye"),
+                new PackItem(1011, 3, "Green Dye"),
+                new PackItem(1012, 3, "Teal Dye"),
+                new PackItem(1013, 3, "Cyan Dye"),
+                new PackItem(1014, 3, "Sky Blue Dye"),
+                new PackItem(1015, 3, "Blue Dye"),
+                new PackItem(1016, 3, "Purple Dye"),
+                new PackItem(1017, 3, "Violet Dye"),
+                new PackItem(1018, 3, "Pink Dye"),
+                new PackItem(1019, 3, "Black Dye"),
+            });
+            _packs.Add(basicDyes);
+
+            var rainbowDyes = new ItemPack("dye-rainbow", "Rainbow Dyes",
+                "Rainbow, intense, living, and midnight rainbow dyes",
+                "Plunder", true, "Dyes");
+            rainbowDyes.Items.AddRange(new[]
+            {
+                new PackItem(1066, 3, "Rainbow Dye"),
+                new PackItem(1067, 3, "Intense Rainbow Dye"),
+                new PackItem(2870, 3, "Living Rainbow Dye"),
+                new PackItem(3556, 3, "Midnight Rainbow Dye"),
+                new PackItem(1985, 1, "Rainbow Hair Dye"),
+            });
+            _packs.Add(rainbowDyes);
+
+            var specialDyes = new ItemPack("dye-special", "Special Dyes",
+                "Flame, hades, shifting, and other rare effect dyes",
+                "Plunder", true, "Dyes");
+            specialDyes.Items.AddRange(new[]
+            {
+                new PackItem(1036, 3, "Flame Dye"),
+                new PackItem(1037, 3, "Flame and Black Dye"),
+                new PackItem(1042, 3, "Green Flame Dye"),
+                new PackItem(1043, 3, "Green Flame and Black Dye"),
+                new PackItem(1044, 3, "Blue Flame Dye"),
+                new PackItem(1045, 3, "Blue Flame and Black Dye"),
+                new PackItem(1063, 3, "Hades Dye"),
+                new PackItem(1064, 3, "Shadowflame Hades Dye"),
+                new PackItem(2878, 3, "Shifting Sands Dye"),
+                new PackItem(2879, 3, "Mirage Dye"),
+                new PackItem(4668, 3, "Illuminant Coating"),
+            });
+            _packs.Add(specialDyes);
+
+            var silverDyes = new ItemPack("dye-metallic", "Metallic Dyes",
+                "Silver, bright, and compound metallic dyes",
+                "Plunder", true, "Dyes");
+            silverDyes.Items.AddRange(new[]
+            {
+                new PackItem(1032, 3, "Silver Dye"),
+                new PackItem(1020, 3, "Red and Silver Dye"),
+                new PackItem(1021, 3, "Orange and Silver Dye"),
+                new PackItem(1022, 3, "Yellow and Silver Dye"),
+                new PackItem(1023, 3, "Lime and Silver Dye"),
+                new PackItem(1024, 3, "Green and Silver Dye"),
+                new PackItem(1025, 3, "Teal and Silver Dye"),
+                new PackItem(1026, 3, "Cyan and Silver Dye"),
+                new PackItem(1027, 3, "Sky Blue and Silver Dye"),
+                new PackItem(1028, 3, "Blue and Silver Dye"),
+                new PackItem(1029, 3, "Purple and Silver Dye"),
+                new PackItem(1030, 3, "Violet and Silver Dye"),
+                new PackItem(1031, 3, "Pink and Silver Dye"),
+            });
+            _packs.Add(silverDyes);
+
+            // Snapshot all built-in pack items for reset
+            foreach (var pack in _packs.Where(p => p.IsBuiltIn))
+                _builtInDefaults[pack.Id] = pack.Items.Select(i => new PackItem(i.ItemId, i.Stack, i.Name)).ToList();
         }
 
         /// <summary>
@@ -708,17 +888,127 @@ namespace Plunder
         /// <summary>
         /// Create a new user pack from a list of item IDs and stacks.
         /// </summary>
-        public ItemPack CreatePack(string name, string description,
-            List<PackItem> items)
+        public ItemPack CreatePack(string name, string description, string category, List<PackItem> items)
         {
-            string id = "user_" + name.ToLower().Replace(" ", "_")
-                + "_" + DateTime.Now.Ticks.ToString("x");
+            // Generate slug ID from name
+            string id = "custom_" + name.ToLower().Replace(" ", "-").Replace("'", "");
+            // Ensure unique
+            int suffix = 1;
+            while (_packs.Any(p => p.Id == id))
+                id = $"custom_{name.ToLower().Replace(" ", "-")}_{suffix++}";
 
-            var pack = new ItemPack(id, name, description, "User", false);
-            pack.Items.AddRange(items);
+            var pack = new ItemPack(id, name, description, "User", false, category ?? "Custom");
+            pack.Items = items ?? new List<PackItem>();
+
             _packs.Add(pack);
             SavePack(pack);
+            _log.Info($"ItemPacks: Created pack '{name}' with {pack.Items.Count} items");
             return pack;
+        }
+
+        /// <summary>
+        /// Add an item to an existing user pack.
+        /// </summary>
+        public bool AddItemToPack(string packId, int itemId, int stack, string name)
+        {
+            var pack = _packs.FirstOrDefault(p => p.Id == packId);
+            if (pack == null) return false;
+
+            pack.Items.Add(new PackItem(itemId, stack, name));
+            SavePack(pack);
+            _log.Info($"ItemPacks: Added '{name}' x{stack} to '{pack.Name}'");
+            return true;
+        }
+
+        /// <summary>
+        /// Remove an item from an existing user pack by index.
+        /// </summary>
+        public bool RemoveItemFromPack(string packId, int itemIndex)
+        {
+            var pack = _packs.FirstOrDefault(p => p.Id == packId);
+            if (pack == null) return false;
+            if (itemIndex < 0 || itemIndex >= pack.Items.Count) return false;
+
+            var removed = pack.Items[itemIndex];
+            pack.Items.RemoveAt(itemIndex);
+            SavePack(pack);
+            _log.Info($"ItemPacks: Removed '{removed.Name ?? $"#{removed.ItemId}"}' from '{pack.Name}'");
+            return true;
+        }
+
+        /// <summary>
+        /// Update an existing item in a user pack at the given index.
+        /// </summary>
+        public bool UpdateItemInPack(string packId, int itemIndex, int newItemId, int newStack, string newName)
+        {
+            var pack = _packs.FirstOrDefault(p => p.Id == packId);
+            if (pack == null) return false;
+            if (itemIndex < 0 || itemIndex >= pack.Items.Count) return false;
+
+            pack.Items[itemIndex] = new PackItem(newItemId, newStack, newName);
+            SavePack(pack);
+            _log.Info($"ItemPacks: Updated item #{itemIndex} in '{pack.Name}' → '{newName}' x{newStack}");
+            return true;
+        }
+
+        /// <summary>
+        /// Rename a user pack.
+        /// </summary>
+        public bool RenamePack(string packId, string newName)
+        {
+            var pack = _packs.FirstOrDefault(p => p.Id == packId);
+            if (pack == null || pack.IsBuiltIn) return false;
+            if (string.IsNullOrWhiteSpace(newName)) return false;
+
+            _log.Info($"ItemPacks: Renamed '{pack.Name}' → '{newName}'");
+            pack.Name = newName;
+            SavePack(pack);
+            return true;
+        }
+
+        /// <summary>
+        /// Change the category of a user-created pack.
+        /// </summary>
+        public bool UpdatePackCategory(string packId, string newCategory)
+        {
+            var pack = _packs.FirstOrDefault(p => p.Id == packId);
+            if (pack == null || pack.IsBuiltIn) return false;
+            if (string.IsNullOrWhiteSpace(newCategory)) return false;
+
+            // Match casing of an existing category so we don't create duplicates
+            string trimmed = newCategory.Trim();
+            var existing = _packs
+                .Select(p => p.Category)
+                .FirstOrDefault(c => string.Equals(c, trimmed, StringComparison.OrdinalIgnoreCase));
+            string finalCategory = existing ?? trimmed;
+
+            _log.Info($"ItemPacks: Category '{pack.Name}' changed '{pack.Category}' → '{finalCategory}'");
+            pack.Category = finalCategory;
+            SavePack(pack);
+            return true;
+        }
+
+        /// <summary>
+        /// Reset a built-in pack to its original default items.
+        /// </summary>
+        public bool ResetBuiltInPack(string packId)
+        {
+            var pack = _packs.FirstOrDefault(p => p.Id == packId && p.IsBuiltIn);
+            if (pack == null) return false;
+            if (!_builtInDefaults.ContainsKey(packId)) return false;
+
+            pack.Items = _builtInDefaults[packId].Select(i => new PackItem(i.ItemId, i.Stack, i.Name)).ToList();
+
+            // Delete saved override file
+            try
+            {
+                string path = Path.Combine(_packsDir, packId + ".json");
+                if (File.Exists(path)) File.Delete(path);
+            }
+            catch { }
+
+            _log.Info($"ItemPacks: Reset '{pack.Name}' to defaults ({pack.Items.Count} items)");
+            return true;
         }
 
         /// <summary>
@@ -735,7 +1025,100 @@ namespace Plunder
             if (File.Exists(path))
                 File.Delete(path);
 
+            _log.Info($"ItemPacks: Deleted pack '{pack.Name}'");
             return true;
+        }
+
+        // ---- Item Catalog ----
+
+        /// <summary>
+        /// Build the full item catalog by iterating all game items via reflection.
+        /// Uses the same reflection fields already cached in EnsureReflection().
+        /// </summary>
+        public void BuildItemCatalog()
+        {
+            if (_catalogBuilt) return;
+            if (!EnsureReflection()) return;
+
+            try
+            {
+                // Get total item count from Terraria.ID.ItemID.Count
+                var asm = Assembly.Load("Terraria");
+                var itemIdType = asm.GetType("Terraria.ID.ItemID");
+
+                int itemCount = 5500; // fallback
+                if (itemIdType != null)
+                {
+                    var countField = itemIdType.GetField("Count",
+                        BindingFlags.Public | BindingFlags.Static);
+                    if (countField != null)
+                    {
+                        var countValue = countField.GetValue(null);
+                        itemCount = Convert.ToInt32(countValue);
+                    }
+                }
+
+                if (_itemType == null || _itemSetDefaultsMethod == null)
+                {
+                    _log.Error("ItemPacks: Cannot build catalog - missing reflection");
+                    return;
+                }
+
+                var catalog = new List<ItemEntry>();
+                int paramCount = _itemSetDefaultsMethod.GetParameters().Length;
+
+                for (int i = 1; i < itemCount; i++)
+                {
+                    try
+                    {
+                        var item = Activator.CreateInstance(_itemType);
+
+                        object[] args = paramCount >= 2
+                            ? new object[] { i, null }
+                            : new object[] { i };
+                        _itemSetDefaultsMethod.Invoke(item, args);
+
+                        // Read name - try property first, then field
+                        string name = _itemNameProp?.GetValue(item)?.ToString();
+                        if (name == null && _itemNameField != null)
+                            name = _itemNameField.GetValue(item)?.ToString();
+
+                        if (string.IsNullOrEmpty(name) || name.Trim() == "")
+                            continue;
+
+                        int maxStack = 1;
+                        if (_itemMaxStackField != null)
+                            maxStack = (int)_itemMaxStackField.GetValue(item);
+
+                        catalog.Add(new ItemEntry { Id = i, Name = name, MaxStack = maxStack });
+                    }
+                    catch { }
+                }
+
+                catalog.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+                _itemCatalog = catalog;
+                _catalogBuilt = true;
+                _log.Info($"ItemPacks: Item catalog built with {_itemCatalog.Count} items");
+            }
+            catch (Exception ex)
+            {
+                _log.Error($"ItemPacks: Failed to build item catalog - {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Search the item catalog by name substring (case-insensitive).
+        /// </summary>
+        public List<ItemEntry> SearchItems(string query, int maxResults = 50)
+        {
+            if (!_catalogBuilt || _itemCatalog == null) return new List<ItemEntry>();
+            if (string.IsNullOrEmpty(query)) return _itemCatalog.Take(maxResults).ToList();
+
+            string lower = query.ToLower();
+            return _itemCatalog
+                .Where(e => e.Name.ToLower().Contains(lower))
+                .Take(maxResults)
+                .ToList();
         }
 
         /// <summary>
@@ -797,22 +1180,35 @@ namespace Plunder
             {
                 if (!Directory.Exists(_packsDir)) return;
 
+                int userCount = 0;
+                int overrideCount = 0;
                 foreach (var file in Directory.GetFiles(_packsDir, "*.json"))
                 {
                     try
                     {
                         string json = File.ReadAllText(file);
                         var pack = DeserializePack(json);
-                        if (pack != null)
+                        if (pack == null) continue;
+
+                        // Check if this overrides a built-in pack
+                        var existing = _packs.FirstOrDefault(p => p.Id == pack.Id && p.IsBuiltIn);
+                        if (existing != null)
+                        {
+                            // Merge: replace built-in pack's items with saved override
+                            existing.Items = pack.Items;
+                            overrideCount++;
+                        }
+                        else
                         {
                             pack.IsBuiltIn = false;
                             _packs.Add(pack);
+                            userCount++;
                         }
                     }
                     catch { }
                 }
 
-                _log.Info($"ItemPacks: Loaded {_packs.Count(p => !p.IsBuiltIn)} user packs");
+                _log.Info($"ItemPacks: Loaded {userCount} user packs, {overrideCount} built-in overrides");
             }
             catch { }
         }
@@ -980,6 +1376,8 @@ namespace Plunder
                 _itemNameField = _itemType.GetField("_nameOverride",
                     BindingFlags.NonPublic | BindingFlags.Instance)
                     ?? _itemType.GetField("Name", BindingFlags.Public | BindingFlags.Instance);
+                _itemNameProp = _itemType.GetProperty("Name",
+                    BindingFlags.Public | BindingFlags.Instance);
 
                 // Find SetDefaults(int, ...)
                 foreach (var m in _itemType.GetMethods(BindingFlags.Public | BindingFlags.Instance))

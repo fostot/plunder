@@ -181,6 +181,7 @@ namespace Plunder
         private static FieldInfo _rocketTimeField;
         private static FieldInfo _breathField;
         private static FieldInfo _breathMaxField;
+        private static FieldInfo _breathCDField;
         private static FieldInfo _noKnockbackField;
         private static FieldInfo _noFallDmgField;
         private static FieldInfo _maxRunSpeedField;
@@ -303,6 +304,7 @@ namespace Plunder
                 _rocketTimeField = _playerType.GetField("rocketTime", pubInst);
                 _breathField = _playerType.GetField("breath", pubInst);
                 _breathMaxField = _playerType.GetField("breathMax", pubInst);
+                _breathCDField = _playerType.GetField("breathCD", pubInst);
                 _noKnockbackField = _playerType.GetField("noKnockback", pubInst);
                 _noFallDmgField = _playerType.GetField("noFallDmg", pubInst);
                 _maxRunSpeedField = _playerType.GetField("maxRunSpeed", pubInst);
@@ -316,8 +318,10 @@ namespace Plunder
 
                 // NPC fields
                 _npcLifeField = _npcType.GetField("life", pubInst);
-                _defaultSpawnRateField = _npcType.GetField("defaultSpawnRate", pubStatic);
-                _defaultMaxSpawnsField = _npcType.GetField("defaultMaxSpawns", pubStatic);
+                // defaultSpawnRate/defaultMaxSpawns are non-public statics (confirmed by HEROsMod ModUtils.cs)
+                var allStatic = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+                _defaultSpawnRateField = _npcType.GetField("defaultSpawnRate", allStatic);
+                _defaultMaxSpawnsField = _npcType.GetField("defaultMaxSpawns", allStatic);
 
                 // Main world flags
                 _getGoodWorldField = _mainType.GetField("getGoodWorld", pubStatic);
@@ -530,7 +534,7 @@ namespace Plunder
             try
             {
                 var shakeTree = _worldGenType?.GetMethod("ShakeTree",
-                    BindingFlags.Public | BindingFlags.Static);
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
                 if (shakeTree != null)
                 {
                     var prefix = typeof(OpCheats).GetMethod(nameof(ShakeTree_Prefix),
@@ -544,7 +548,19 @@ namespace Plunder
                 }
                 else
                 {
-                    _log.Warn("OpCheats: WorldGen.ShakeTree not found");
+                    // Log available tree-related methods to help find the correct name
+                    _log.Warn("OpCheats: WorldGen.ShakeTree not found — searching for tree methods...");
+                    if (_worldGenType != null)
+                    {
+                        foreach (var m in _worldGenType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
+                        {
+                            if (m.Name.IndexOf("tree", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                m.Name.IndexOf("shake", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                _log.Info($"  WorldGen candidate: {m.Name}({string.Join(", ", Array.ConvertAll(m.GetParameters(), p => p.ParameterType.Name + " " + p.Name))})");
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception ex) { _log.Error($"OpCheats: ShakeTree patch error - {ex.Message}"); }
@@ -609,12 +625,16 @@ namespace Plunder
                         _rocketTimeField.SetValue(__instance, 999);
                 }
 
-                // Infinite Breath
+                // Infinite Breath — set breath to max AND breathCD high so the
+                // game never ticks breath down (prevents bubble UI flicker).
+                // Breath logic: breathCD--; if (<=0) { breath--; breathCD=7; }
+                // By keeping breathCD high each frame, breath-- never triggers.
                 if (_infiniteBreath && _breathField != null)
                 {
                     int maxBreath = _breathMaxField != null
                         ? (int)_breathMaxField.GetValue(__instance) : 200;
                     _breathField.SetValue(__instance, maxBreath);
+                    _breathCDField?.SetValue(__instance, 999);
                 }
 
                 // No Knockback
@@ -625,24 +645,15 @@ namespace Plunder
                 if (_noFallDamage && _noFallDmgField != null)
                     _noFallDmgField.SetValue(__instance, true);
 
-                // Tool Range — multiply tileRangeX/Y so tools reach further
+                // Tool Range — set tileRangeX/Y directly (matches HEROsMod InfiniteReach pattern)
+                // HEROsMod only modifies tileRangeX/Y, not blockRange
+                // Vanilla defaults after ResetEffects: tileRangeX=5, tileRangeY=4
                 if (_toolRangeEnabled && _toolRangeMult > 1)
                 {
                     if (_tileRangeXField != null)
-                    {
-                        int baseX = (int)_tileRangeXField.GetValue(__instance);
-                        _tileRangeXField.SetValue(__instance, baseX * _toolRangeMult);
-                    }
+                        _tileRangeXField.SetValue(__instance, 5 * _toolRangeMult);
                     if (_tileRangeYField != null)
-                    {
-                        int baseY = (int)_tileRangeYField.GetValue(__instance);
-                        _tileRangeYField.SetValue(__instance, baseY * _toolRangeMult);
-                    }
-                    if (_blockRangeField != null)
-                    {
-                        int baseBlock = (int)_blockRangeField.GetValue(__instance);
-                        _blockRangeField.SetValue(__instance, baseBlock + _toolRangeMult * 2);
-                    }
+                        _tileRangeYField.SetValue(__instance, 4 * _toolRangeMult);
                 }
 
                 // Spawn Rate
