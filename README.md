@@ -6,21 +6,33 @@ A modular Terraria companion mod for the [TerrariaModder](https://github.com/ter
 > **Framework:** .NET Framework 4.8
 > **Author:** Fostot
 
-> **Bundled MonoFont Version:** 1.0.0 — [MonoFont Repository](https://github.com/fostot/Monofont)
+> **Bundled Lux Version:** 1.0.0 — [Lux Repository](https://github.com/fostot/Lux)
+> **Bundled Monofont Version:** 1.0.0 — [Monofont Repository](https://github.com/fostot/Monofont)
+
+---
+
+> [!CAUTION]
+> **Required: Lux UI Library**
+>
+> Plunder depends on **[Lux](https://github.com/fostot/Lux)** — a shared UI widget library that provides the draggable panel system, layout engine, and input handling used by all Plunder panels. **Plunder will not work without it.**
+>
+> **Installation:**
+> 1. Download `Lux.dll` from the [Lux releases](https://github.com/fostot/Lux/releases) (also bundled in Plunder's release zip)
+> 2. Place it in your `Terraria/TerrariaModder/core/` folder (next to `TerrariaModder.Core.dll`)
 
 ---
 
 > [!IMPORTANT]
-> **Optional: MonoFont for Better UI Text**
+> **Optional: Monofont for Better UI Text**
 >
-> Plunder supports **[MonoFont](https://github.com/fostot/Monofont)** — a crisp 8x16 monospace bitmap font that replaces Terraria's blurry variable-width font in all Plunder panels. Without it, Plunder falls back to Terraria's default font, which can cause misaligned text and UI layout issues.
+> Plunder supports **[Monofont](https://github.com/fostot/Monofont)** — a crisp 8x16 monospace bitmap font that replaces Terraria's blurry variable-width font in all Plunder panels. Without it, Plunder falls back to Terraria's default font, which can cause misaligned text and UI layout issues.
 >
-> **To enable MonoFont:**
-> 1. Download `Monofont.dll` from the [MonoFont releases](https://github.com/fostot/Monofont/releases)
+> **To enable Monofont:**
+> 1. Download `Monofont.dll` from the [Monofont releases](https://github.com/fostot/Monofont/releases) (also bundled in Plunder's release zip)
 > 2. Place it in your `Terraria/TerrariaModder/core/` folder (next to `TerrariaModder.Core.dll`)
-> 3. Restart Terraria — MonoFont activates automatically
+> 3. Restart Terraria — Monofont activates automatically
 >
-> **Plunder works without MonoFont installed** — all text will render using Terraria's built-in font as a fallback.
+> **Plunder works without Monofont installed** — all text will render using Terraria's built-in font as a fallback.
 
 ---
 
@@ -94,7 +106,7 @@ Drop-in JSON item packs that spawn predefined sets of items into your inventory.
 ### UI
 
 - **Draggable Panel** — Resizable, repositionable panel with tabbed sections (Cheats, Packs, Other, Config).
-- **MonoFont Rendering** — Crisp 8x16 monospace bitmap font with automatic fallback to Terraria's default font.
+- **Monofont Rendering** — Crisp 8x16 monospace bitmap font with automatic fallback to Terraria's default font.
 - **Rich Tooltips** — Enhanced tooltip rendering with word-wrapping, rounded corners, and proper text measurement.
 - **Split-Panel Layout** — Cheats and Packs tabs use a split-panel design with independent scrolling.
 - **Mod Menu Integration** — Quick access button to open the TerrariaModder mod menu (F6).
@@ -117,13 +129,16 @@ Additional keybinds (God Mode, Map Teleport, Player Glow, Fishing Buffs) are unb
 ## Installation
 
 1. Install [TerrariaModder](https://github.com/terraria-modder) into your Terraria directory.
-2. Copy `Plunder.dll` and `manifest.json` into:
+2. **Required:** Place [`Lux.dll`](https://github.com/fostot/Lux) in `Terraria/TerrariaModder/core/`.
+3. Copy `Plunder.dll` and `manifest.json` into:
    ```
    Terraria/TerrariaModder/mods/plunder/
    ```
-3. *(Optional)* Install [MonoFont](https://github.com/fostot/Monofont) for improved UI text rendering — place `Monofont.dll` in `Terraria/TerrariaModder/core/`.
-4. Launch Terraria via `TerrariaInjector.exe`.
-5. Press `F6` to open the Mod Menu and enable Plunder, or press `]` in-game to open the panel directly.
+4. *(Optional)* Place [`Monofont.dll`](https://github.com/fostot/Monofont) in `Terraria/TerrariaModder/core/` for improved UI text rendering.
+5. Launch Terraria via `TerrariaInjector.exe`.
+6. Press `F6` to open the Mod Menu and enable Plunder, or press `]` in-game to open the panel directly.
+
+> **Tip:** The [release zip](https://github.com/fostot/Plunder/releases) bundles everything (Plunder, Lux, Monofont) with the correct folder structure — just extract into your Terraria directory.
 
 ## Building from Source
 
@@ -165,7 +180,7 @@ Cheats.cs           → God mode, infinite resources, damage/speed/spawn control
 EnvironmentControl  → Time, weather, and event control
 WorldActions.cs     → Gravestones, death drops, kill/clear commands
 ItemPackManager.cs  → JSON item pack loader + spawner
-RichTooltip.cs      → Enhanced tooltip rendering with MonoFont support
+RichTooltip.cs      → Enhanced tooltip rendering with Monofont support
 ```
 
 All game interaction is done through reflection (no compile-time Terraria references), making the mod resilient to game updates.
