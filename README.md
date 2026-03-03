@@ -169,3 +169,9 @@ RichTooltip.cs      → Enhanced tooltip rendering with MonoFont support
 ```
 
 All game interaction is done through reflection (no compile-time Terraria references), making the mod resilient to game updates.
+
+---
+
+## License
+
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
