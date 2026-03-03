@@ -273,7 +273,7 @@ namespace Plunder
                     if (selected)
                         UIRenderer.DrawRect(innerX, itemY, 2, catItemH, UIColors.Accent);
                     Color4 textColor = selected ? UIColors.AccentText : UIColors.Text;
-                    UIRenderer.DrawText("ALL", innerX + 6, itemY + (catItemH - 14) / 2, textColor);
+                    DrawMono("ALL", innerX + 6, itemY + (catItemH - 14) / 2, textColor);
 
                     if (hover && WidgetInput.MouseLeftClick)
                     {
@@ -306,7 +306,7 @@ namespace Plunder
                         UIRenderer.DrawRect(innerX, hdrY, treeContentW, groupHeaderH, UIColors.SectionBg);
 
                     string arrow = expanded ? "\u25BC " : "\u25B6 ";
-                    UIRenderer.DrawTextSmall(arrow + groupLabel, innerX + 4,
+                    DrawMonoSmall(arrow + groupLabel, innerX + 4,
                         hdrY + (groupHeaderH - 11) / 2, UIColors.Accent);
 
                     if (hdrHover && WidgetInput.MouseLeftClick)
@@ -335,7 +335,7 @@ namespace Plunder
                             if (selected)
                                 UIRenderer.DrawRect(innerX, catY, 2, catItemH, UIColors.Accent);
                             Color4 textColor = selected ? UIColors.AccentText : UIColors.TextDim;
-                            UIRenderer.DrawTextSmall(cat.Label, innerX + 16,
+                            DrawMonoSmall(cat.Label, innerX + 16,
                                 catY + (catItemH - 11) / 2, textColor);
 
                             if (hover && WidgetInput.MouseLeftClick)
@@ -367,7 +367,7 @@ namespace Plunder
                     if (selected)
                         UIRenderer.DrawRect(innerX, catY, 2, catItemH, UIColors.Accent);
                     Color4 textColor = selected ? UIColors.AccentText : UIColors.TextDim;
-                    UIRenderer.DrawText(cat.Label, innerX + 6, catY + (catItemH - 14) / 2, textColor);
+                    DrawMono(cat.Label, innerX + 6, catY + (catItemH - 14) / 2, textColor);
 
                     if (hover && WidgetInput.MouseLeftClick)
                     {
@@ -429,7 +429,7 @@ namespace Plunder
             else
                 titleText = GetCategoryLabel(_cheatsSelectedCategory).ToUpperInvariant();
 
-            UIRenderer.DrawText(titleText, innerX + 2, titleY + (titleH - 14) / 2, UIColors.AccentText);
+            DrawMono(titleText, innerX + 2, titleY + (titleH - 14) / 2, UIColors.AccentText);
             int pinnedTopBottom = titleY + titleH;
             UIRenderer.DrawRect(innerX, pinnedTopBottom - 2, innerW + scrollbarW, 1, UIColors.Divider);
 
@@ -485,7 +485,7 @@ namespace Plunder
 
             // Redraw pinned title over scroll bleed
             UIRenderer.DrawRect(px + 1, py + 1, pw - 2, pinnedTopBottom - py, UIColors.InputBg);
-            UIRenderer.DrawText(titleText, innerX + 2, titleY + (titleH - 14) / 2, UIColors.AccentText);
+            DrawMono(titleText, innerX + 2, titleY + (titleH - 14) / 2, UIColors.AccentText);
             UIRenderer.DrawRect(innerX, pinnedTopBottom - 2, innerW + scrollbarW, 1, UIColors.Divider);
         }
 
@@ -507,7 +507,7 @@ namespace Plunder
             // Accent bar on the left
             UIRenderer.DrawRect(layout.X, y, 3, height, UIColors.Accent);
             // Text
-            UIRenderer.DrawTextSmall(title, layout.X + 8, y + (height - 11) / 2, UIColors.Accent);
+            DrawMonoSmall(title, layout.X + 8, y + (height - 11) / 2, UIColors.Accent);
         }
 
         private void DrawCheatsAllOptions(ref StackLayout layout)
@@ -680,7 +680,7 @@ namespace Plunder
                                     $"{(runSpeed > 1 ? $"{runSpeed}x = {runSpeed * 100}% of normal speed.\n" : "")}" +
                                     "Affects max run speed and acceleration.");
                             string display = TextUtil.Truncate(runLabel, layout.Width);
-                            UIRenderer.DrawText(display, layout.X, lblY + (18 - 14) / 2, UIColors.Text);
+                            DrawMono(display, layout.X, lblY + (18 - 14) / 2, UIColors.Text);
                         }
                     }
                     int rsY = layout.Advance(22);
@@ -729,33 +729,18 @@ namespace Plunder
                     int toolRange = GetToolRangeMult?.Invoke() ?? 1;
                     bool toolRangeOn = GetToolRangeEnabledState?.Invoke() ?? false;
                     string trLabel = !toolRangeOn ? "Tool Range Override"
+                        : toolRange == 0 ? "Tool Range: Unlimited"
                         : toolRange <= 1 ? "Tool Range: 1x (normal)"
                         : $"Tool Range: {toolRange}x";
-                    {
-                        int lblY = layout.Advance(18);
-                        if (InView(lblY, 18))
-                        {
-                            bool lblHover = WidgetInput.IsMouseOver(layout.X, lblY, layout.Width, 18);
-                            if (lblHover)
-                                RichTooltip.Set("Tool Range Multiplier",
-                                    "Multiplies how far your tools can reach.\n" +
-                                    "Affects pickaxes, axes, hammers, and\nblock placement distance.\n" +
-                                    "1x = Normal range.\n" +
-                                    $"{(toolRange > 1 ? $"{toolRange}x = {toolRange}x further reach.\n" : "")}" +
-                                    "Great for mining from a safe distance.");
-                            string display = TextUtil.Truncate(trLabel, layout.Width);
-                            UIRenderer.DrawText(display, layout.X, lblY + (18 - 14) / 2, UIColors.Text);
-                        }
-                    }
-                    if (VCheckboxTip(ref layout, "Enabled", toolRangeOn,
-                        "Enable Tool Range Override", "Toggle extended tool reach on/off."))
+                    if (VCheckboxTip(ref layout, trLabel, toolRangeOn,
+                        "Tool Range Override", "Override tool/placement reach.\n0 = Unlimited, 1 = Normal, 2-50 = multiplier."))
                         OnToolRangeToggle?.Invoke();
                     if (toolRangeOn)
                     {
                         int trY = layout.Advance(22);
                         if (InView(trY, 22))
                         {
-                            int newTr = _toolRangeSlider.Draw(layout.X, trY, layout.Width, 22, toolRange, 1, 10);
+                            int newTr = _toolRangeSlider.Draw(layout.X + 20, trY, layout.Width - 20, 22, toolRange, 0, 50);
                             if (newTr != toolRange)
                                 SetToolRangeMult?.Invoke(newTr);
                         }
@@ -781,7 +766,7 @@ namespace Plunder
                                     $"{(spawnRate > 1 ? $"{spawnRate}x = Enemies spawn {spawnRate}x faster\nwith {spawnRate}x more allowed at once.\n" : "")}" +
                                     "Higher values may be less noticeable\nnear towns due to NPC safety zones.");
                             string display = TextUtil.Truncate(spawnLabel, layout.Width);
-                            UIRenderer.DrawText(display, layout.X, lblY + (18 - 14) / 2, UIColors.Text);
+                            DrawMono(display, layout.X, lblY + (18 - 14) / 2, UIColors.Text);
                         }
                     }
                     int srY = layout.Advance(22);

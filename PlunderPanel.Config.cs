@@ -93,8 +93,8 @@ namespace Plunder
             // Truncate label so it doesn't overlap the key binding
             int labelMaxWidth = layout.Width - keyWidth - 16;
             string truncLabel = TextUtil.Truncate(label, labelMaxWidth);
-            UIRenderer.DrawText(truncLabel, layout.X + 4, textY, UIColors.TextDim);
-            UIRenderer.DrawText(display, keyX, textY, keyColor);
+            DrawMono(truncLabel, layout.X + 4, textY, UIColors.TextDim);
+            DrawMono(display, keyX, textY, keyColor);
         }
     }
 }

@@ -1,5 +1,7 @@
+using Monofont;
 using TerrariaModder.Core.UI;
 using TerrariaModder.Core.UI.Widgets;
+using Color4 = TerrariaModder.Core.UI.Color4;
 
 namespace Plunder
 {
@@ -34,8 +36,11 @@ namespace Plunder
                 UIRenderer.DrawRect(xBtnX, y, XWidth, height,
                     input.IsFocused ? UIColors.InputFocusBg : UIColors.InputBg);
 
-                UIRenderer.DrawTextSmall("X", xBtnX + 6, y + (height - 11) / 2,
-                    xHover ? UIColors.Error : UIColors.TextDim);
+                var c = xHover ? UIColors.Error : UIColors.TextDim;
+                if (MonoFont.IsReady)
+                    MonoFont.DrawText("X", xBtnX + 6, y + (height - 11) / 2, c.R, c.G, c.B, c.A);
+                else
+                    UIRenderer.DrawTextSmall("X", xBtnX + 6, y + (height - 11) / 2, c);
 
                 if (xHover && WidgetInput.MouseLeftClick)
                 {

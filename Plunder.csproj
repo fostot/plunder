@@ -23,6 +23,14 @@
       <HintPath>C:\Windows\Microsoft.NET\assembly\GAC_32\Microsoft.Xna.Framework\v4.0_4.0.0.0__842cf8be1de50553\Microsoft.Xna.Framework.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="Lux">
+      <HintPath>..\Lux\bin\Lux.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Monofont">
+      <HintPath>..\Monofont\bin\Monofont.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="0Harmony">
       <HintPath>D:\SteamLibrary\steamapps\common\Terraria\TerrariaModder\core\deps\0Harmony.dll</HintPath>
       <Private>false</Private>

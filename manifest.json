@@ -1,7 +1,7 @@
 ﻿{
   "id": "plunder",
   "name": "Plunder",
-  "version": "0.1.0.75.8174",
+  "version": "0.1.0.96.8399",
   "author": "Fostot",
   "description": "Plunder - A modular Terraria companion mod with cheat features, item packs, and more",
   "entry_dll": "Plunder.dll",
@@ -227,10 +227,10 @@
     "toolRangeMult": {
       "type": "int",
       "default": 1,
-      "min": 1,
-      "max": 10,
+      "min": 0,
+      "max": 50,
       "label": "Tool Range Multiplier",
-      "description": "Tool reach distance (1 = normal, 2-10 = multiplier)"
+      "description": "Tool reach distance (0 = unlimited, 1 = normal, 2-50 = multiplier)"
     }
   },
   "keybinds": [

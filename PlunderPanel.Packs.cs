@@ -92,7 +92,7 @@ namespace Plunder
                 createHover ? UIColors.ButtonHover : UIColors.Button);
             string createLabel = "+ Create Pack";
             int createLabelW = createLabel.Length * TabCharWidth;
-            UIRenderer.DrawText(createLabel, innerX + (createBtnW - createLabelW) / 2,
+            DrawMono(createLabel, innerX + (createBtnW - createLabelW) / 2,
                 topY + (btnH - 14) / 2, UIColors.Text);
             if (createHover && WidgetInput.MouseLeftClick)
             {
@@ -122,7 +122,7 @@ namespace Plunder
             UIRenderer.DrawRect(innerX, importBtnY, innerW, bottomBtnH,
                 importHover ? UIColors.ButtonHover : UIColors.Button);
             string impLabel = "Import Pack";
-            UIRenderer.DrawTextSmall(impLabel, innerX + (innerW - (int)(impLabel.Length * TabCharWidth * 0.75f)) / 2,
+            DrawMonoSmall(impLabel, innerX + (innerW - (int)(impLabel.Length * TabCharWidth * 0.75f)) / 2,
                 importBtnY + (bottomBtnH - 11) / 2, UIColors.Text);
             if (importHover && WidgetInput.MouseLeftClick)
             {
@@ -172,7 +172,7 @@ namespace Plunder
 
                         UIRenderer.DrawRect(innerX, catY, treeContentW, catHeaderH, UIColors.SectionBg);
                         string arrow = expanded ? "\u25BC " : "\u25B6 ";
-                        UIRenderer.DrawTextSmall(arrow + group.Key.ToUpper(), innerX + 4,
+                        DrawMonoSmall(arrow + group.Key.ToUpper(), innerX + 4,
                             catY + (catHeaderH - 11) / 2, UIColors.Warning);
 
                         if (WidgetInput.IsMouseOver(innerX, catY, treeContentW, catHeaderH)
@@ -206,7 +206,7 @@ namespace Plunder
 
                                 Color4 nameColor = selected ? UIColors.AccentText : UIColors.Text;
                                 string displayName = TextUtil.Truncate(pack.Name, treeContentW - 8);
-                                UIRenderer.DrawTextSmall(displayName, innerX + 12,
+                                DrawMonoSmall(displayName, innerX + 12,
                                     itemY + (packItemH - 11) / 2, nameColor);
 
                                 if (itemHover && WidgetInput.MouseLeftClick)
@@ -218,8 +218,9 @@ namespace Plunder
                                     _packsEditingName = false;
                                     _packsEditingCategory = false;
                                     _packsLookupResults.Clear();
-                
+
                                     _packsSaveError = "";
+                                    UnfocusAllTextInputs();
                                     WidgetInput.ConsumeClick();
                                 }
                             }
@@ -254,7 +255,7 @@ namespace Plunder
             UIRenderer.DrawRect(innerX, topY, createBtnW, btnH,
                 createHover ? UIColors.ButtonHover : UIColors.Button);
             createLabelW = createLabel.Length * TabCharWidth;
-            UIRenderer.DrawText(createLabel, innerX + (createBtnW - createLabelW) / 2,
+            DrawMono(createLabel, innerX + (createBtnW - createLabelW) / 2,
                 topY + (btnH - 14) / 2, UIColors.Text);
         }
 
@@ -293,7 +294,7 @@ namespace Plunder
                 bool saveHover = WidgetInput.IsMouseOver(saveBtnX, topY, saveW, titleH);
                 UIRenderer.DrawRect(saveBtnX, topY, saveW, titleH,
                     saveHover ? new Color4(40, 120, 40, 255) : new Color4(30, 90, 30, 255));
-                UIRenderer.DrawTextSmall("Save", saveBtnX + 10, topY + (titleH - 11) / 2, UIColors.Text);
+                DrawMonoSmall("Save", saveBtnX + 10, topY + (titleH - 11) / 2, UIColors.Text);
                 if (saveHover && WidgetInput.MouseLeftClick)
                 {
                     WidgetInput.ConsumeClick();
@@ -304,12 +305,13 @@ namespace Plunder
                         title = newName;
                     }
                     _packsEditingName = false;
+                    _packsNameInput.Unfocus();
                 }
             }
             else
             {
                 // Static title — click to enter edit mode
-                UIRenderer.DrawText(title, innerX + 2, topY + 2, UIColors.AccentText);
+                DrawMono(title, innerX + 2, topY + 2, UIColors.AccentText);
                 if (titleEditable)
                 {
                     bool titleHover = WidgetInput.IsMouseOver(innerX, topY, innerW, titleH);
@@ -318,6 +320,8 @@ namespace Plunder
                         WidgetInput.ConsumeClick();
                         _packsEditingName = true;
                         _packsNameInput.Text = selectedPack.Name;
+                        _packsEditingCategory = false;
+                        _packsCategoryInput.Unfocus();
                     }
                 }
             }
@@ -337,7 +341,7 @@ namespace Plunder
                 bool catSaveHover = WidgetInput.IsMouseOver(catSaveX, titleBottom, catSaveW, catH);
                 UIRenderer.DrawRect(catSaveX, titleBottom, catSaveW, catH,
                     catSaveHover ? new Color4(40, 120, 40, 255) : new Color4(30, 90, 30, 255));
-                UIRenderer.DrawTextSmall("Save", catSaveX + 10, titleBottom + (catH - 11) / 2, UIColors.Text);
+                DrawMonoSmall("Save", catSaveX + 10, titleBottom + (catH - 11) / 2, UIColors.Text);
                 if (catSaveHover && WidgetInput.MouseLeftClick)
                 {
                     WidgetInput.ConsumeClick();
@@ -345,11 +349,12 @@ namespace Plunder
                     if (!string.IsNullOrEmpty(newCat))
                         OnUpdatePackCategory?.Invoke(selectedPack.Id, newCat);
                     _packsEditingCategory = false;
+                    _packsCategoryInput.Unfocus();
                 }
             }
             else if (selectedPack != null)
             {
-                UIRenderer.DrawTextSmall(selectedPack.Category, innerX + 2, titleBottom + 2, UIColors.TextDim);
+                DrawMonoSmall(selectedPack.Category, innerX + 2, titleBottom + 2, UIColors.TextDim);
                 if (catEditable)
                 {
                     bool catHover = WidgetInput.IsMouseOver(innerX, titleBottom, innerW, catH);
@@ -358,6 +363,8 @@ namespace Plunder
                         WidgetInput.ConsumeClick();
                         _packsEditingCategory = true;
                         _packsCategoryInput.Text = selectedPack.Category;
+                        _packsEditingName = false;
+                        _packsNameInput.Unfocus();
                     }
                 }
             }
@@ -373,7 +380,7 @@ namespace Plunder
             bool spawnHover = WidgetInput.IsMouseOver(btn1X, row1Y, quarterW, btnH);
             UIRenderer.DrawRect(btn1X, row1Y, quarterW, btnH,
                 spawnHover ? new Color4(40, 120, 40, 255) : new Color4(30, 90, 30, 255));
-            UIRenderer.DrawTextSmall("Spawn Items", btn1X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
+            DrawMonoSmall("Spawn Items", btn1X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
             if (spawnHover && WidgetInput.MouseLeftClick && selectedPack != null)
             {
                 WidgetInput.ConsumeClick();
@@ -386,7 +393,7 @@ namespace Plunder
             string btn2Label = isBuiltIn ? "Reset Pack" : "Delete Pack";
             UIRenderer.DrawRect(btn2X, row1Y, quarterW, btnH,
                 delHover ? new Color4(160, 40, 40, 255) : new Color4(120, 30, 30, 255));
-            UIRenderer.DrawTextSmall(btn2Label, btn2X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
+            DrawMonoSmall(btn2Label, btn2X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
             if (delHover && WidgetInput.MouseLeftClick && selectedPack != null)
             {
                 WidgetInput.ConsumeClick();
@@ -401,7 +408,7 @@ namespace Plunder
             bool addHover = WidgetInput.IsMouseOver(btn3X, row1Y, quarterW, btnH);
             UIRenderer.DrawRect(btn3X, row1Y, quarterW, btnH,
                 addHover ? new Color4(40, 90, 160, 255) : new Color4(30, 70, 130, 255));
-            UIRenderer.DrawTextSmall("Add Item", btn3X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
+            DrawMonoSmall("Add Item", btn3X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
             if (addHover && WidgetInput.MouseLeftClick && selectedPack != null)
             {
                 WidgetInput.ConsumeClick();
@@ -412,6 +419,10 @@ namespace Plunder
                 _packsItemCount.Text = "";
                 _packsLookupResults.Clear();
                 _packsSaveError = "";
+                _packsEditingName = false;
+                _packsEditingCategory = false;
+                _packsNameInput.Unfocus();
+                _packsCategoryInput.Unfocus();
             }
 
             int btn4X = btn3X + quarterW + btnGap;
@@ -419,7 +430,7 @@ namespace Plunder
             bool expBtnHover = WidgetInput.IsMouseOver(btn4X, row1Y, btn4W, btnH);
             UIRenderer.DrawRect(btn4X, row1Y, btn4W, btnH,
                 expBtnHover ? new Color4(160, 120, 30, 255) : new Color4(130, 100, 20, 255));
-            UIRenderer.DrawTextSmall("Export Pack", btn4X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
+            DrawMonoSmall("Export Pack", btn4X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
             if (expBtnHover && WidgetInput.MouseLeftClick && selectedPack != null)
             {
                 WidgetInput.ConsumeClick();
@@ -460,7 +471,7 @@ namespace Plunder
                 int hdrY = listY + contentCursor - _packsRightScroll;
                 if (hdrY + 18 > listY && hdrY < listY + listH)
                 {
-                    UIRenderer.DrawTextSmall($"ITEMS ({selectedPack.Items.Count})", innerX + 2,
+                    DrawMonoSmall($"ITEMS ({selectedPack.Items.Count})", innerX + 2,
                         hdrY + 2, UIColors.Warning);
                 }
                 contentCursor += 20;
@@ -493,12 +504,12 @@ namespace Plunder
 
                             string itemLabel = $"[{item.ItemId}] {item.Name ?? "Unknown"}  x{item.Stack}";
                             itemLabel = TextUtil.Truncate(itemLabel, listContentW - 28);
-                            UIRenderer.DrawTextSmall(itemLabel, innerX + 4, itemY + (itemRowH - 11) / 2, UIColors.Text);
+                            DrawMonoSmall(itemLabel, innerX + 4, itemY + (itemRowH - 11) / 2, UIColors.Text);
 
                             // Remove button (X)
                             int xBtnX = innerX + listContentW - 20;
                             bool xHover = WidgetInput.IsMouseOver(xBtnX, itemY, 20, itemRowH);
-                            UIRenderer.DrawTextSmall("X", xBtnX + 6, itemY + (itemRowH - 11) / 2,
+                            DrawMonoSmall("X", xBtnX + 6, itemY + (itemRowH - 11) / 2,
                                 xHover ? UIColors.Error : UIColors.TextDim);
                             if (xHover && WidgetInput.MouseLeftClick)
                             {
@@ -517,8 +528,11 @@ namespace Plunder
                                 _packsItemName.Text = item.Name ?? "";
                                 _packsItemCount.Text = item.Stack.ToString();
                                 _packsLookupResults.Clear();
-            
                                 _packsSaveError = "";
+                                _packsEditingName = false;
+                                _packsEditingCategory = false;
+                                _packsNameInput.Unfocus();
+                                _packsCategoryInput.Unfocus();
                             }
                         }
                         contentCursor += itemRowH;
@@ -542,7 +556,7 @@ namespace Plunder
                 {
                     int lblY = listY + contentCursor - _packsRightScroll;
                     if (lblY + 16 > listY && lblY < listY + listH)
-                        UIRenderer.DrawTextSmall("Matches found — click to select:", innerX + 2, lblY + 2, UIColors.TextHint);
+                        DrawMonoSmall("Matches found — click to select:", innerX + 2, lblY + 2, UIColors.TextHint);
                     contentCursor += 18;
 
                     foreach (var entry in _packsLookupResults)
@@ -553,7 +567,7 @@ namespace Plunder
                             bool rHover = WidgetInput.IsMouseOver(innerX, rY, listContentW, 20);
                             if (rHover)
                                 UIRenderer.DrawRect(innerX, rY, listContentW, 20, UIColors.ItemHoverBg);
-                            UIRenderer.DrawTextSmall($"  [{entry.Id}] {entry.Name}", innerX + 4,
+                            DrawMonoSmall($"  [{entry.Id}] {entry.Name}", innerX + 4,
                                 rY + (20 - 11) / 2, rHover ? UIColors.Success : UIColors.TextDim);
                             if (rHover && WidgetInput.MouseLeftClick)
                             {
@@ -571,7 +585,7 @@ namespace Plunder
                 {
                     int emptyY = listY + contentCursor - _packsRightScroll;
                     if (emptyY + 18 > listY && emptyY < listY + listH)
-                        UIRenderer.DrawTextSmall("No items. Click 'Add Item' to add.", innerX + 4,
+                        DrawMonoSmall("No items. Click 'Add Item' to add.", innerX + 4,
                             emptyY + 2, UIColors.TextHint);
                     contentCursor += 20;
                 }
@@ -579,7 +593,7 @@ namespace Plunder
             else
             {
                 int msgY = listY + 20;
-                UIRenderer.DrawTextSmall("Select a pack from the tree on the left.", innerX + 4,
+                DrawMonoSmall("Select a pack from the tree on the left.", innerX + 4,
                     msgY, UIColors.TextHint);
                 contentCursor = 40;
             }
@@ -615,11 +629,11 @@ namespace Plunder
                 bool saveHover = WidgetInput.IsMouseOver(saveBtnX, topY, saveW, titleH);
                 UIRenderer.DrawRect(saveBtnX, topY, saveW, titleH,
                     saveHover ? new Color4(40, 120, 40, 255) : new Color4(30, 90, 30, 255));
-                UIRenderer.DrawTextSmall("Save", saveBtnX + 10, topY + (titleH - 11) / 2, UIColors.Text);
+                DrawMonoSmall("Save", saveBtnX + 10, topY + (titleH - 11) / 2, UIColors.Text);
             }
             else
             {
-                UIRenderer.DrawText(title, innerX + 2, topY + 2, UIColors.AccentText);
+                DrawMono(title, innerX + 2, topY + 2, UIColors.AccentText);
             }
             // Re-draw category
             if (_packsEditingCategory && catEditable)
@@ -631,33 +645,33 @@ namespace Plunder
                 bool catSaveHover = WidgetInput.IsMouseOver(catSaveX, titleBottom, catSaveW, catH);
                 UIRenderer.DrawRect(catSaveX, titleBottom, catSaveW, catH,
                     catSaveHover ? new Color4(40, 120, 40, 255) : new Color4(30, 90, 30, 255));
-                UIRenderer.DrawTextSmall("Save", catSaveX + 10, titleBottom + (catH - 11) / 2, UIColors.Text);
+                DrawMonoSmall("Save", catSaveX + 10, titleBottom + (catH - 11) / 2, UIColors.Text);
             }
             else if (selectedPack != null)
             {
-                UIRenderer.DrawTextSmall(selectedPack.Category, innerX + 2, titleBottom + 2, UIColors.TextDim);
+                DrawMonoSmall(selectedPack.Category, innerX + 2, titleBottom + 2, UIColors.TextDim);
             }
 
             // Re-draw buttons
             spawnHover = WidgetInput.IsMouseOver(btn1X, row1Y, quarterW, btnH);
             UIRenderer.DrawRect(btn1X, row1Y, quarterW, btnH,
                 spawnHover ? new Color4(40, 120, 40, 255) : new Color4(30, 90, 30, 255));
-            UIRenderer.DrawTextSmall("Spawn Items", btn1X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
+            DrawMonoSmall("Spawn Items", btn1X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
 
             delHover = WidgetInput.IsMouseOver(btn2X, row1Y, quarterW, btnH);
             UIRenderer.DrawRect(btn2X, row1Y, quarterW, btnH,
                 delHover ? new Color4(160, 40, 40, 255) : new Color4(120, 30, 30, 255));
-            UIRenderer.DrawTextSmall(btn2Label, btn2X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
+            DrawMonoSmall(btn2Label, btn2X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
 
             addHover = WidgetInput.IsMouseOver(btn3X, row1Y, quarterW, btnH);
             UIRenderer.DrawRect(btn3X, row1Y, quarterW, btnH,
                 addHover ? new Color4(40, 90, 160, 255) : new Color4(30, 70, 130, 255));
-            UIRenderer.DrawTextSmall("Add Item", btn3X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
+            DrawMonoSmall("Add Item", btn3X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
 
             expBtnHover = WidgetInput.IsMouseOver(btn4X, row1Y, btn4W, btnH);
             UIRenderer.DrawRect(btn4X, row1Y, btn4W, btnH,
                 expBtnHover ? new Color4(160, 120, 30, 255) : new Color4(130, 100, 20, 255));
-            UIRenderer.DrawTextSmall("Export Pack", btn4X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
+            DrawMonoSmall("Export Pack", btn4X + 4, row1Y + (btnH - 11) / 2, UIColors.Text);
 
             UIRenderer.DrawRect(innerX, pinnedTopBottom - 2, innerW, 1, UIColors.Divider);
         }
@@ -694,9 +708,9 @@ namespace Plunder
             int lbl1Y = listY + contentCursor - _packsRightScroll;
             if (lbl1Y + labelH > listY && lbl1Y < listY + listH)
             {
-                UIRenderer.DrawTextSmall("ITEM ID", innerX + 2, lbl1Y + 2, UIColors.TextDim);
-                UIRenderer.DrawTextSmall("ITEM NAME", nameX + 2, lbl1Y + 2, UIColors.TextDim);
-                UIRenderer.DrawTextSmall("COUNT", countX + 2, lbl1Y + 2, UIColors.TextDim);
+                DrawMonoSmall("ITEM ID", innerX + 2, lbl1Y + 2, UIColors.TextDim);
+                DrawMonoSmall("ITEM NAME", nameX + 2, lbl1Y + 2, UIColors.TextDim);
+                DrawMonoSmall("COUNT", countX + 2, lbl1Y + 2, UIColors.TextDim);
             }
             contentCursor += labelH;
 
@@ -722,7 +736,7 @@ namespace Plunder
                 bool lookupHover = WidgetInput.IsMouseOver(innerX, r3Y, btnW, btnH);
                 UIRenderer.DrawRect(innerX, r3Y, btnW, btnH,
                     lookupHover ? new Color4(40, 90, 160, 255) : new Color4(30, 70, 130, 255));
-                UIRenderer.DrawTextSmall("Lookup", innerX + 8, r3Y + (btnH - 11) / 2, UIColors.Text);
+                DrawMonoSmall("Lookup", innerX + 8, r3Y + (btnH - 11) / 2, UIColors.Text);
                 if (lookupHover && WidgetInput.MouseLeftClick)
                 {
                     WidgetInput.ConsumeClick();
@@ -734,7 +748,7 @@ namespace Plunder
                 bool saveHover = WidgetInput.IsMouseOver(saveX, r3Y, btnW, btnH);
                 UIRenderer.DrawRect(saveX, r3Y, btnW, btnH,
                     saveHover ? new Color4(40, 120, 40, 255) : new Color4(30, 90, 30, 255));
-                UIRenderer.DrawTextSmall("Save", saveX + 14, r3Y + (btnH - 11) / 2, UIColors.Text);
+                DrawMonoSmall("Save", saveX + 14, r3Y + (btnH - 11) / 2, UIColors.Text);
                 if (saveHover && WidgetInput.MouseLeftClick)
                 {
                     WidgetInput.ConsumeClick();
@@ -770,6 +784,9 @@ namespace Plunder
                             {
                                 OnUpdateItemInPack?.Invoke(pack.Id, itemIndex, itemId, stack, name);
                                 _packsEditingItemIdx = -1;
+                                _packsItemId.Unfocus();
+                                _packsItemName.Unfocus();
+                                _packsItemCount.Unfocus();
                             }
                             else
                             {
@@ -792,7 +809,7 @@ namespace Plunder
                 bool cancelHover = WidgetInput.IsMouseOver(cancelX, r3Y, btnW, btnH);
                 UIRenderer.DrawRect(cancelX, r3Y, btnW, btnH,
                     cancelHover ? UIColors.CloseBtnHover : UIColors.CloseBtn);
-                UIRenderer.DrawTextSmall("Cancel", cancelX + 6, r3Y + (btnH - 11) / 2, UIColors.Text);
+                DrawMonoSmall("Cancel", cancelX + 6, r3Y + (btnH - 11) / 2, UIColors.Text);
                 if (cancelHover && WidgetInput.MouseLeftClick)
                 {
                     WidgetInput.ConsumeClick();
@@ -800,13 +817,16 @@ namespace Plunder
                     else _packsAddingNewItem = false;
                     _packsLookupResults.Clear();
                     _packsSaveError = "";
+                    _packsItemId.Unfocus();
+                    _packsItemName.Unfocus();
+                    _packsItemCount.Unfocus();
                 }
 
                 // Error text after buttons
                 if (!string.IsNullOrEmpty(_packsSaveError))
                 {
                     int errX = cancelX + btnW + 8;
-                    UIRenderer.DrawTextSmall(_packsSaveError, errX, r3Y + (btnH - 11) / 2, UIColors.Error);
+                    DrawMonoSmall(_packsSaveError, errX, r3Y + (btnH - 11) / 2, UIColors.Error);
                 }
             }
             contentCursor += btnH + rowGap;

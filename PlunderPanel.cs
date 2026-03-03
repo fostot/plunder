@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Monofont;
 using TerrariaModder.Core.Logging;
 using TerrariaModder.Core.UI;
 using TerrariaModder.Core.UI.Widgets;
+using Color4 = TerrariaModder.Core.UI.Color4;
+using DraggablePanel = Lux.UI.Widgets.DraggablePanel;
 
 namespace Plunder
 {
@@ -29,11 +32,6 @@ namespace Plunder
         private int _viewTop;
         private int _viewBottom;
 
-        // Resize handle — drag bottom edge to change panel height
-        private bool _isResizing;
-        private int _resizeStartY;
-        private int _resizeStartHeight;
-        private const int ResizeHandleHeight = 18;
         private const int MinPanelHeight = 200;
         private const int MaxPanelHeight = 900;
 
@@ -106,6 +104,9 @@ namespace Plunder
 
         // PACKS tab — Save validation
         private string _packsSaveError = "";
+
+        // TextInput focus management — only one TextInput focused at a time
+        private TextInput _activeTextInput;
 
         // ---- Callbacks wired from Mod.cs ----
         // Cheats: Visual
@@ -225,6 +226,16 @@ namespace Plunder
                 config.PanelWidth, config.PanelHeight);
 
             _panel.ClipContent = true;
+            _panel.Resizable = true;
+            _panel.UseMonoFont = true;
+
+            // Block game keyboard input (chat, hotkeys, hotbar) while any TextInput is focused
+            _cheatsSearchInput.KeyBlockId = "plunder";
+            _packsItemId.KeyBlockId = "plunder";
+            _packsItemName.KeyBlockId = "plunder";
+            _packsItemCount.KeyBlockId = "plunder";
+            _packsNameInput.KeyBlockId = "plunder";
+            _packsCategoryInput.KeyBlockId = "plunder";
 
             foreach (Tab t in Enum.GetValues(typeof(Tab)))
                 _scrollOffsets[t] = 0;
@@ -257,12 +268,69 @@ namespace Plunder
         {
             if (!(_panel?.IsOpen ?? false)) return;
 
-            _cheatsSearchInput.Update();
-            _packsItemId.Update();
-            _packsItemName.Update();
-            _packsItemCount.Update();
-            _packsNameInput.Update();
-            _packsCategoryInput.Update();
+            // Only call Update() on TextInputs that are currently active/visible.
+            // This prevents stale focused inputs from keeping EnableTextInput() active.
+            if (_activeTab == Tab.Cheats)
+                _cheatsSearchInput.Update();
+
+            if (_activeTab == Tab.Packs)
+            {
+                if (_packsAddingNewItem || _packsEditingItemIdx >= 0)
+                {
+                    _packsItemId.Update();
+                    _packsItemName.Update();
+                    _packsItemCount.Update();
+                }
+                if (_packsEditingName)
+                    _packsNameInput.Update();
+                if (_packsEditingCategory)
+                    _packsCategoryInput.Update();
+            }
+        }
+
+        /// <summary>
+        /// Unfocus all TextInput fields and clear focus tracking.
+        /// Call when switching tabs, changing pack selection, or exiting edit modes.
+        /// </summary>
+        private void UnfocusAllTextInputs()
+        {
+            _cheatsSearchInput.Unfocus();
+            _packsItemId.Unfocus();
+            _packsItemName.Unfocus();
+            _packsItemCount.Unfocus();
+            _packsNameInput.Unfocus();
+            _packsCategoryInput.Unfocus();
+            _activeTextInput = null;
+        }
+
+        /// <summary>
+        /// Ensures only one TextInput is focused at a time.
+        /// When a new input gains focus (via click), the previously active one is unfocused.
+        /// Called after all drawing is complete for the frame.
+        /// </summary>
+        private void EnforceSingleTextInputFocus()
+        {
+            TextInput newlyFocused = null;
+
+            // Check each input — first one found focused that isn't the current active = newly focused
+            if (_cheatsSearchInput.IsFocused && _cheatsSearchInput != _activeTextInput) newlyFocused = _cheatsSearchInput;
+            else if (_packsItemId.IsFocused && _packsItemId != _activeTextInput) newlyFocused = _packsItemId;
+            else if (_packsItemName.IsFocused && _packsItemName != _activeTextInput) newlyFocused = _packsItemName;
+            else if (_packsItemCount.IsFocused && _packsItemCount != _activeTextInput) newlyFocused = _packsItemCount;
+            else if (_packsNameInput.IsFocused && _packsNameInput != _activeTextInput) newlyFocused = _packsNameInput;
+            else if (_packsCategoryInput.IsFocused && _packsCategoryInput != _activeTextInput) newlyFocused = _packsCategoryInput;
+
+            if (newlyFocused != null)
+            {
+                // Unfocus the previous active input
+                if (_activeTextInput != null && _activeTextInput.IsFocused)
+                    _activeTextInput.Unfocus();
+                _activeTextInput = newlyFocused;
+            }
+
+            // Clear tracking if the active input was unfocused externally (Escape, clear button)
+            if (_activeTextInput != null && !_activeTextInput.IsFocused)
+                _activeTextInput = null;
         }
 
         public void Open()
@@ -289,6 +357,26 @@ namespace Plunder
         }
 
         public void ApplyConfig() { }
+
+        // ============================================================
+        //  MONOFONT HELPERS
+        // ============================================================
+
+        private static void DrawMono(string text, int x, int y, Color4 c)
+        {
+            if (MonoFont.IsReady)
+                MonoFont.DrawText(text, x, y, c.R, c.G, c.B, c.A);
+            else
+                UIRenderer.DrawText(text, x, y, c);
+        }
+
+        private static void DrawMonoSmall(string text, int x, int y, Color4 c)
+        {
+            if (MonoFont.IsReady)
+                MonoFont.DrawText(text, x, y, c.R, c.G, c.B, c.A);
+            else
+                UIRenderer.DrawTextSmall(text, x, y, c);
+        }
 
         // ============================================================
         //  VIRTUAL SCROLL HELPERS
@@ -330,7 +418,7 @@ namespace Plunder
             int textY = y + (height - 14) / 2;
             Color4 textColor = isChecked ? UIColors.Text : UIColors.TextDim;
             string display = TextUtil.Truncate(label, layout.Width - (textX - layout.X));
-            UIRenderer.DrawText(display, textX, textY, textColor);
+            DrawMono(display, textX, textY, textColor);
 
             if (hover && WidgetInput.MouseLeftClick)
             {
@@ -370,7 +458,7 @@ namespace Plunder
             int textY = y + (height - 14) / 2;
             Color4 textColor = isChecked ? UIColors.Text : UIColors.TextDim;
             string display = TextUtil.Truncate(label, width - (textX - x));
-            UIRenderer.DrawText(display, textX, textY, textColor);
+            DrawMono(display, textX, textY, textColor);
 
             if (hover && WidgetInput.MouseLeftClick)
             {
@@ -414,7 +502,7 @@ namespace Plunder
             int textY = y + (height - 14) / 2;
             Color4 textColor = isChecked ? UIColors.Text : UIColors.TextDim;
             string display = TextUtil.Truncate(label, layout.Width - (textX - layout.X));
-            UIRenderer.DrawText(display, textX, textY, textColor);
+            DrawMono(display, textX, textY, textColor);
 
             if (hover && WidgetInput.MouseLeftClick)
             {
@@ -449,7 +537,7 @@ namespace Plunder
             if (!InView(y, height)) return;
             string display = TextUtil.Truncate(text, layout.Width);
             int textY = y + (height - 14) / 2;
-            UIRenderer.DrawText(display, layout.X, textY, color);
+            DrawMono(display, layout.X, textY, color);
         }
 
         private void VLabel(ref StackLayout layout, string text, int height = 18)
@@ -468,7 +556,7 @@ namespace Plunder
                 if (InView(y, lineHeight))
                 {
                     int textY = y + (lineHeight - 14) / 2;
-                    UIRenderer.DrawText(line, layout.X, textY, color);
+                    DrawMono(line, layout.X, textY, color);
                 }
             }
         }
@@ -544,21 +632,7 @@ namespace Plunder
 
         private void OnDraw()
         {
-            // Handle resize drag BEFORE BeginDraw so height is correct this frame
-            if (_isResizing)
-            {
-                if (WidgetInput.MouseLeft)
-                {
-                    int deltaY = WidgetInput.MouseY - _resizeStartY;
-                    int newH = Math.Max(MinPanelHeight, Math.Min(MaxPanelHeight, _resizeStartHeight + deltaY));
-                    _panel.Height = newH;
-                }
-                else
-                {
-                    _isResizing = false;
-                    _config.Set("panelHeight", _panel.Height);
-                }
-            }
+            if (!MonoFont.IsReady) MonoFont.Initialize();
 
             if (!_panel.BeginDraw()) return;
             try
@@ -569,10 +643,7 @@ namespace Plunder
                 int ch = _panel.ContentHeight;
 
                 int contentY = cy + TabBarHeight + 4;
-                // Resize bar sits flush inside the 2px panel border (no gap on left/right/bottom)
-                int borderThickness = 2;
-                int handleTop = _panel.Y + _panel.Height - borderThickness - ResizeHandleHeight;
-                int contentH = handleTop - contentY;
+                int contentH = ch - TabBarHeight - 4;
                 if (contentH < 10) { _panel.EndDraw(); return; }
 
                 // Set virtual scroll view bounds
@@ -591,18 +662,16 @@ namespace Plunder
                     case Tab.Config: DrawConfigTab(ref layout); break;
                 }
 
+                // Enforce only one TextInput focused at a time
+                EnforceSingleTextInputFocus();
+
                 _lastContentHeight = layout.TotalHeight;
 
                 // 2) Draw tab bar ON TOP (opaque bg covers any scroll bleed)
                 UIRenderer.DrawRect(cx, cy, cw, TabBarHeight + 4, UIColors.PanelBg);
                 DrawCustomTabBar(cx, cy, cw, TabBarHeight);
 
-                // 3) Draw resize handle flush inside panel border (no gap on left/right/bottom)
-                int barX = _panel.X + borderThickness;
-                int barW = _panel.Width - borderThickness * 2;
-                DrawResizeHandle(barX, handleTop, barW);
-
-                // 4) Handle scroll for content area
+                // 3) Handle scroll for content area
                 HandleScrollInput(cx, contentY, cw, contentH);
             }
             catch (Exception ex)
@@ -614,56 +683,6 @@ namespace Plunder
                 _panel.EndDraw();
                 RichTooltip.DrawDeferred();
             }
-        }
-
-        private const int DefaultPanelHeight = 600;
-
-        private void DrawResizeHandle(int x, int y, int width)
-        {
-            // Styled background bar (ModMenu section header style, but shorter)
-            UIRenderer.DrawRect(x, y, width, ResizeHandleHeight, UIColors.SectionBg);
-            UIRenderer.DrawRect(x, y, width, 1, UIColors.Divider);
-
-            bool barHover = WidgetInput.IsMouseOver(x, y, width, ResizeHandleHeight);
-
-            // Drag handle dots in center
-            Color4 dotColor = barHover ? UIColors.TextHint : UIColors.Divider;
-            int cx = x + width / 2;
-            int dotY = y + ResizeHandleHeight / 2 - 1;
-            UIRenderer.DrawRect(cx - 12, dotY, 24, 1, dotColor);
-            UIRenderer.DrawRect(cx - 8, dotY + 2, 16, 1, dotColor);
-
-            // "Reset" text button on the right (small text, no background, hover color animation)
-            string resetText = "Reset";
-            int resetW = (int)(TextUtil.MeasureWidth(resetText) * 0.75f);
-            int resetX = x + width - resetW - 10;
-            int resetTextY = y + (ResizeHandleHeight - 11) / 2;  // 11px = small font height (14 * 0.75)
-            bool resetHover = WidgetInput.IsMouseOver(resetX - 4, y, resetW + 8, ResizeHandleHeight);
-            Color4 resetColor = resetHover ? UIColors.Warning : UIColors.TextDim;
-            UIRenderer.DrawTextSmall(resetText, resetX, resetTextY, resetColor);
-
-            // Handle clicks — reset or resize drag
-            if (barHover && WidgetInput.MouseLeftClick)
-            {
-                if (resetHover)
-                {
-                    _panel.Height = DefaultPanelHeight;
-                    _config.Set("panelHeight", DefaultPanelHeight);
-                }
-                else if (!_isResizing)
-                {
-                    _isResizing = true;
-                    _resizeStartY = WidgetInput.MouseY;
-                    _resizeStartHeight = _panel.Height;
-                }
-                WidgetInput.ConsumeClick();
-            }
-
-            // Block all clicks from passing through the bar
-            if (barHover && WidgetInput.MouseRightClick)
-                WidgetInput.ConsumeRightClick();
-            if (barHover)
-                WidgetInput.ConsumeScroll();
         }
 
         private const int TabCharWidth = 11;
@@ -698,12 +717,13 @@ namespace Plunder
                 int textX = tabX + (tabW - textWidth) / 2;
                 int textY = y + (height - 14) / 2;
                 Color4 textColor = isActive ? UIColors.AccentText : UIColors.TextDim;
-                UIRenderer.DrawText(TabNames[i], textX, textY, textColor);
+                DrawMono(TabNames[i], textX, textY, textColor);
 
                 // Click handling
                 if (hover && WidgetInput.MouseLeftClick)
                 {
                     WidgetInput.ConsumeClick();
+                    UnfocusAllTextInputs();
                     Tab prevTab = _activeTab;
                     _activeTab = (Tab)i;
                     if (!_scrollOffsets.ContainsKey(_activeTab))
@@ -746,7 +766,7 @@ namespace Plunder
                     UIRenderer.DrawRect(layout.X, y, layout.Width, 22, UIColors.SectionBg);
 
                 int textY = y + (22 - 14) / 2;
-                UIRenderer.DrawText(display, layout.X, textY, UIColors.Accent);
+                DrawMono(display, layout.X, textY, UIColors.Accent);
                 UIRenderer.DrawRect(layout.X, y + 20, layout.Width, 1, UIColors.Divider);
 
                 if (hover && WidgetInput.MouseLeftClick)

@@ -7,11 +7,11 @@ using TerrariaModder.Core.Logging;
 namespace Plunder
 {
     /// <summary>
-    /// OP Cheats module — god mode, infinite mana/minions/flight/ammo/breath,
+    /// Cheats module — god mode, infinite mana/minions/flight/ammo/breath,
     /// damage multiplier, spawn rate, run speed, etc.
     /// All Terraria access via reflection. Harmony patches delayed 5s for type loading.
     /// </summary>
-    public static class OpCheats
+    public static class Cheats
     {
         private static ILogger _log;
         private static Harmony _harmony;
@@ -127,7 +127,7 @@ namespace Plunder
         {
             _toolRangeEnabled = !_toolRangeEnabled;
             string label = _toolRangeEnabled
-                ? (_toolRangeMult <= 1 ? "Tool Range: Normal" : $"Tool Range: {_toolRangeMult}x")
+                ? (_toolRangeMult == 0 ? "Tool Range: Unlimited" : _toolRangeMult <= 1 ? "Tool Range: Normal" : $"Tool Range: {_toolRangeMult}x")
                 : "Tool Range Override OFF";
             ShowMsg(label, _toolRangeEnabled);
         }
@@ -156,7 +156,22 @@ namespace Plunder
 
         public static void SetRunSpeedMult(int v) { _runSpeedMult = v; }
         public static void SetToolRangeEnabled(bool v) { _toolRangeEnabled = v; }
-        public static void SetToolRangeMult(int v) { _toolRangeMult = Math.Max(1, v); }
+        public static void SetToolRangeMult(int v)
+        {
+            int clamped = Math.Max(0, v);
+            if (clamped != _toolRangeMult)
+            {
+                _toolRangeMult = clamped;
+                string label = clamped == 0 ? "Tool Range: Unlimited"
+                    : clamped == 1 ? "Tool Range: Normal"
+                    : $"Tool Range: {clamped}x";
+                ShowMsg(label, _toolRangeEnabled);
+            }
+            else
+            {
+                _toolRangeMult = clamped;
+            }
+        }
 
         // ============================================================
         //  REFLECTION CACHE
@@ -216,9 +231,9 @@ namespace Plunder
         public static void Initialize(ILogger log)
         {
             _log = log;
-            _harmony = new Harmony("com.plunder.opcheats");
+            _harmony = new Harmony("com.plunder.cheats");
             _patchTimer = new Timer(ApplyPatches, null, 5000, Timeout.Infinite);
-            _log.Info("OpCheats initialized");
+            _log.Info("Cheats initialized");
         }
 
         public static void EnsurePatched()
@@ -235,7 +250,7 @@ namespace Plunder
             // Restore spawn rate before unpatching
             RestoreSpawnRate();
 
-            _harmony?.UnpatchAll("com.plunder.opcheats");
+            _harmony?.UnpatchAll("com.plunder.cheats");
             _patchesApplied = false;
 
             _godMode = false;
@@ -255,7 +270,7 @@ namespace Plunder
             _toolRangeEnabled = false;
             _toolRangeMult = 1;
 
-            _log?.Info("OpCheats unloaded");
+            _log?.Info("Cheats unloaded");
         }
 
         private static void RestoreSpawnRate()
@@ -312,9 +327,29 @@ namespace Plunder
                 _immuneField = _playerType.GetField("immune", pubInst);
                 _immuneTimeField = _playerType.GetField("immuneTime", pubInst);
                 _immuneNoBlink = _playerType.GetField("immuneNoBlink", pubInst);
-                _tileRangeXField = _playerType.GetField("tileRangeX", pubInst);
-                _tileRangeYField = _playerType.GetField("tileRangeY", pubInst);
-                _blockRangeField = _playerType.GetField("blockRange", pubInst);
+                // Tool range fields — try instance first (Terraria 1.3.x), then static (some 1.4.x builds)
+                _tileRangeXField = _playerType.GetField("tileRangeX", pubInst)
+                    ?? _playerType.GetField("tileRangeX", pubStatic);
+                _tileRangeYField = _playerType.GetField("tileRangeY", pubInst)
+                    ?? _playerType.GetField("tileRangeY", pubStatic);
+                _blockRangeField = _playerType.GetField("blockRange", pubInst)
+                    ?? _playerType.GetField("blockRange", pubStatic);
+                _log.Info($"Cheats: tileRangeX={(_tileRangeXField != null ? $"found ({(_tileRangeXField.IsStatic ? "static" : "instance")})" : "NOT FOUND")}");
+                _log.Info($"Cheats: tileRangeY={(_tileRangeYField != null ? $"found ({(_tileRangeYField.IsStatic ? "static" : "instance")})" : "NOT FOUND")}");
+                _log.Info($"Cheats: blockRange={(_blockRangeField != null ? $"found ({(_blockRangeField.IsStatic ? "static" : "instance")})" : "NOT FOUND")}");
+                // If still not found, enumerate all range-like fields for debugging
+                if (_tileRangeXField == null)
+                {
+                    var allFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+                    foreach (var f in _playerType.GetFields(allFlags))
+                    {
+                        if (f.Name.IndexOf("range", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            f.Name.IndexOf("tile", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            f.Name.IndexOf("block", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            f.Name.IndexOf("reach", StringComparison.OrdinalIgnoreCase) >= 0)
+                            _log.Info($"  Player candidate: {f.Name} ({(f.IsStatic ? "static" : "instance")}, {f.FieldType.Name})");
+                    }
+                }
 
                 // NPC fields
                 _npcLifeField = _npcType.GetField("life", pubInst);
@@ -327,11 +362,11 @@ namespace Plunder
                 _getGoodWorldField = _mainType.GetField("getGoodWorld", pubStatic);
 
                 _reflectionReady = true;
-                _log.Info("OpCheats: Reflection initialized");
+                _log.Info("Cheats: Reflection initialized");
             }
             catch (Exception ex)
             {
-                _log.Error($"OpCheats: Reflection error - {ex.Message}");
+                _log.Error($"Cheats: Reflection error - {ex.Message}");
             }
         }
 
@@ -354,7 +389,7 @@ namespace Plunder
                 InitReflection();
                 if (!_reflectionReady)
                 {
-                    _log.Error("OpCheats: Reflection failed, cannot patch");
+                    _log.Error("Cheats: Reflection failed, cannot patch");
                     return;
                 }
 
@@ -364,10 +399,10 @@ namespace Plunder
                     BindingFlags.Public | BindingFlags.Instance);
                 if (resetEffects != null)
                 {
-                    var postfix = typeof(OpCheats).GetMethod(nameof(ResetEffects_Postfix),
+                    var postfix = typeof(Cheats).GetMethod(nameof(ResetEffects_Postfix),
                         BindingFlags.NonPublic | BindingFlags.Static);
                     _harmony.Patch(resetEffects, postfix: new HarmonyMethod(postfix));
-                    _log.Info("OpCheats: Patched Player.ResetEffects");
+                    _log.Info("Cheats: Patched Player.ResetEffects");
                 }
 
                 // 2) Player.Hurt prefix — god mode
@@ -384,10 +419,10 @@ namespace Plunder
                     BindingFlags.Public | BindingFlags.Instance);
                 if (horizMethod != null)
                 {
-                    var prefix = typeof(OpCheats).GetMethod(nameof(HorizontalMovement_Prefix),
+                    var prefix = typeof(Cheats).GetMethod(nameof(HorizontalMovement_Prefix),
                         BindingFlags.NonPublic | BindingFlags.Static);
                     _harmony.Patch(horizMethod, prefix: new HarmonyMethod(prefix));
-                    _log.Info("OpCheats: Patched Player.HorizontalMovement");
+                    _log.Info("Cheats: Patched Player.HorizontalMovement");
                 }
 
                 // 6) Player.PickAmmo — infinite ammo
@@ -396,11 +431,18 @@ namespace Plunder
                 // 7) WorldGen.ShakeTree — no tree bombs (FTW/Zenith worlds)
                 PatchShakeTree();
 
-                _log.Info("OpCheats: All patches applied");
+                // 8) Player.ItemCheck prefix — tool range override (backup)
+                PatchItemCheck();
+
+                // 9) Player.IsInTileInteractionRange — bypass the hardcoded range cap
+                //    Terraria 1.4.4 has an internal cap in this method; setting fields isn't enough.
+                PatchTileInteractionRange();
+
+                _log.Info("Cheats: All patches applied");
             }
             catch (Exception ex)
             {
-                _log.Error($"OpCheats: Patch error - {ex.Message}");
+                _log.Error($"Cheats: Patch error - {ex.Message}");
             }
         }
 
@@ -424,17 +466,17 @@ namespace Plunder
 
                 if (hurtMethod != null)
                 {
-                    var prefix = typeof(OpCheats).GetMethod(nameof(PlayerHurt_Prefix),
+                    var prefix = typeof(Cheats).GetMethod(nameof(PlayerHurt_Prefix),
                         BindingFlags.NonPublic | BindingFlags.Static);
                     _harmony.Patch(hurtMethod, prefix: new HarmonyMethod(prefix));
-                    _log.Info("OpCheats: Patched Player.Hurt");
+                    _log.Info("Cheats: Patched Player.Hurt");
                 }
                 else
                 {
-                    _log.Warn("OpCheats: Player.Hurt not found");
+                    _log.Warn("Cheats: Player.Hurt not found");
                 }
             }
-            catch (Exception ex) { _log.Error($"OpCheats: Hurt patch error - {ex.Message}"); }
+            catch (Exception ex) { _log.Error($"Cheats: Hurt patch error - {ex.Message}"); }
         }
 
         private static void PatchPlayerKillMe()
@@ -449,17 +491,17 @@ namespace Plunder
 
                 if (killMethod != null)
                 {
-                    var prefix = typeof(OpCheats).GetMethod(nameof(PlayerKillMe_Prefix),
+                    var prefix = typeof(Cheats).GetMethod(nameof(PlayerKillMe_Prefix),
                         BindingFlags.NonPublic | BindingFlags.Static);
                     _harmony.Patch(killMethod, prefix: new HarmonyMethod(prefix));
-                    _log.Info("OpCheats: Patched Player.KillMe");
+                    _log.Info("Cheats: Patched Player.KillMe");
                 }
                 else
                 {
-                    _log.Warn("OpCheats: Player.KillMe not found");
+                    _log.Warn("Cheats: Player.KillMe not found");
                 }
             }
-            catch (Exception ex) { _log.Error($"OpCheats: KillMe patch error - {ex.Message}"); }
+            catch (Exception ex) { _log.Error($"Cheats: KillMe patch error - {ex.Message}"); }
         }
 
         private static void PatchNpcStrike()
@@ -474,21 +516,21 @@ namespace Plunder
 
                 if (strikeMethod != null)
                 {
-                    var prefix = typeof(OpCheats).GetMethod(nameof(NpcStrike_Prefix),
+                    var prefix = typeof(Cheats).GetMethod(nameof(NpcStrike_Prefix),
                         BindingFlags.NonPublic | BindingFlags.Static);
-                    var postfix = typeof(OpCheats).GetMethod(nameof(NpcStrike_Postfix),
+                    var postfix = typeof(Cheats).GetMethod(nameof(NpcStrike_Postfix),
                         BindingFlags.NonPublic | BindingFlags.Static);
                     _harmony.Patch(strikeMethod,
                         prefix: new HarmonyMethod(prefix),
                         postfix: new HarmonyMethod(postfix));
-                    _log.Info("OpCheats: Patched NPC.StrikeNPC");
+                    _log.Info("Cheats: Patched NPC.StrikeNPC");
                 }
                 else
                 {
-                    _log.Warn("OpCheats: NPC.StrikeNPC not found");
+                    _log.Warn("Cheats: NPC.StrikeNPC not found");
                 }
             }
-            catch (Exception ex) { _log.Error($"OpCheats: StrikeNPC patch error - {ex.Message}"); }
+            catch (Exception ex) { _log.Error($"Cheats: StrikeNPC patch error - {ex.Message}"); }
         }
 
         private static void PatchPickAmmo()
@@ -511,22 +553,22 @@ namespace Plunder
 
                     if (hasDontConsume)
                     {
-                        var prefix = typeof(OpCheats).GetMethod(nameof(PickAmmo_Prefix),
+                        var prefix = typeof(Cheats).GetMethod(nameof(PickAmmo_Prefix),
                             BindingFlags.NonPublic | BindingFlags.Static);
                         _harmony.Patch(pickAmmo, prefix: new HarmonyMethod(prefix));
-                        _log.Info("OpCheats: Patched Player.PickAmmo");
+                        _log.Info("Cheats: Patched Player.PickAmmo");
                     }
                     else
                     {
-                        _log.Warn("OpCheats: PickAmmo has no dontConsume param");
+                        _log.Warn("Cheats: PickAmmo has no dontConsume param");
                     }
                 }
                 else
                 {
-                    _log.Warn("OpCheats: Player.PickAmmo not found");
+                    _log.Warn("Cheats: Player.PickAmmo not found");
                 }
             }
-            catch (Exception ex) { _log.Error($"OpCheats: PickAmmo patch error - {ex.Message}"); }
+            catch (Exception ex) { _log.Error($"Cheats: PickAmmo patch error - {ex.Message}"); }
         }
 
         private static void PatchShakeTree()
@@ -537,19 +579,19 @@ namespace Plunder
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
                 if (shakeTree != null)
                 {
-                    var prefix = typeof(OpCheats).GetMethod(nameof(ShakeTree_Prefix),
+                    var prefix = typeof(Cheats).GetMethod(nameof(ShakeTree_Prefix),
                         BindingFlags.NonPublic | BindingFlags.Static);
-                    var postfix = typeof(OpCheats).GetMethod(nameof(ShakeTree_Postfix),
+                    var postfix = typeof(Cheats).GetMethod(nameof(ShakeTree_Postfix),
                         BindingFlags.NonPublic | BindingFlags.Static);
                     _harmony.Patch(shakeTree,
                         prefix: new HarmonyMethod(prefix),
                         postfix: new HarmonyMethod(postfix));
-                    _log.Info("OpCheats: Patched WorldGen.ShakeTree");
+                    _log.Info("Cheats: Patched WorldGen.ShakeTree");
                 }
                 else
                 {
                     // Log available tree-related methods to help find the correct name
-                    _log.Warn("OpCheats: WorldGen.ShakeTree not found — searching for tree methods...");
+                    _log.Warn("Cheats: WorldGen.ShakeTree not found — searching for tree methods...");
                     if (_worldGenType != null)
                     {
                         foreach (var m in _worldGenType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
@@ -563,12 +605,136 @@ namespace Plunder
                     }
                 }
             }
-            catch (Exception ex) { _log.Error($"OpCheats: ShakeTree patch error - {ex.Message}"); }
+            catch (Exception ex) { _log.Error($"Cheats: ShakeTree patch error - {ex.Message}"); }
+        }
+
+        private static void PatchItemCheck()
+        {
+            try
+            {
+                // Find Player.ItemCheck — the main method that checks tool/placement range.
+                // Patching with a prefix ensures our range values are set RIGHT BEFORE the check.
+                MethodInfo itemCheck = null;
+                foreach (var m in _playerType.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+                {
+                    if (m.Name == "ItemCheck") { itemCheck = m; break; }
+                }
+
+                if (itemCheck != null)
+                {
+                    var prefix = typeof(Cheats).GetMethod(nameof(ItemCheck_Prefix),
+                        BindingFlags.NonPublic | BindingFlags.Static);
+                    _harmony.Patch(itemCheck, prefix: new HarmonyMethod(prefix));
+                    _log.Info($"Cheats: Patched Player.ItemCheck ({string.Join(", ", Array.ConvertAll(itemCheck.GetParameters(), p => p.ParameterType.Name))})");
+                }
+                else
+                {
+                    _log.Warn("Cheats: Player.ItemCheck not found — searching for candidates...");
+                    foreach (var m in _playerType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+                    {
+                        if (m.Name.IndexOf("ItemCheck", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            m.Name.IndexOf("PlaceThing", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            m.Name.IndexOf("TileInteraction", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            _log.Info($"  Player candidate: {m.Name}({string.Join(", ", Array.ConvertAll(m.GetParameters(), p => p.ParameterType.Name + " " + p.Name))})");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) { _log.Error($"Cheats: ItemCheck patch error - {ex.Message}"); }
+        }
+
+        private static void PatchTileInteractionRange()
+        {
+            try
+            {
+                // Terraria 1.4.4 has Player.IsInTileInteractionRange which has an internal
+                // range cap that ignores tileRangeX/Y values above ~20. We patch it to
+                // always return true when tool range is enabled.
+                var allInst = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+                MethodInfo rangeMethod = null;
+
+                // Try known method names
+                string[] candidates = {
+                    "IsInTileInteractionRange",
+                    "InInteractionRange",
+                    "IsWithinTileRange"
+                };
+                foreach (var name in candidates)
+                {
+                    rangeMethod = _playerType.GetMethod(name, allInst);
+                    if (rangeMethod != null) break;
+                }
+
+                // Always enumerate ALL range/interact/reach methods so we can see what exists
+                _log.Info("Cheats: Enumerating all range/interact/reach methods on Player:");
+                foreach (var m in _playerType.GetMethods(allInst))
+                {
+                    if (m.ReturnType == typeof(bool) &&
+                        (m.Name.IndexOf("range", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                         m.Name.IndexOf("interact", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                         m.Name.IndexOf("reach", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                         m.Name.IndexOf("InTile", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                         m.Name.IndexOf("Smart", StringComparison.OrdinalIgnoreCase) >= 0))
+                    {
+                        _log.Info($"  {m.Name}({string.Join(", ", Array.ConvertAll(m.GetParameters(), p => p.ParameterType.Name + " " + p.Name))}) -> {m.ReturnType.Name}");
+                    }
+                }
+
+                if (rangeMethod != null)
+                {
+                    var prefix = typeof(Cheats).GetMethod(nameof(TileInteractionRange_Prefix),
+                        BindingFlags.NonPublic | BindingFlags.Static);
+                    _harmony.Patch(rangeMethod, prefix: new HarmonyMethod(prefix));
+                    _log.Info($"Cheats: Patched {rangeMethod.Name} (return type: {rangeMethod.ReturnType.Name}, params: {string.Join(", ", Array.ConvertAll(rangeMethod.GetParameters(), p => p.ParameterType.Name + " " + p.Name))})");
+                }
+                else
+                {
+                    _log.Warn("Cheats: IsInTileInteractionRange NOT FOUND — range bypass unavailable");
+                }
+            }
+            catch (Exception ex) { _log.Error($"Cheats: TileInteractionRange patch error - {ex.Message}"); }
         }
 
         // ============================================================
         //  HARMONY CALLBACKS
         // ============================================================
+
+        /// <summary>
+        /// Player.IsInTileInteractionRange prefix — bypass the internal range cap
+        /// when tool range override is enabled. Without this patch, Terraria 1.4.4
+        /// ignores tileRangeX/Y values above ~20 tiles due to a hardcoded check.
+        /// </summary>
+        private static int _tileRangePrefixCallCount;
+
+        private static bool TileInteractionRange_Prefix(object __instance, ref bool __result)
+        {
+            if (!_toolRangeEnabled) return true; // run original
+
+            try
+            {
+                // Only apply to local player
+                int myPlayer = (int)_myPlayerField.GetValue(null);
+                var players = _playerArrayField.GetValue(null) as Array;
+                if (players == null || !ReferenceEquals(players.GetValue(myPlayer), __instance))
+                    return true; // not local player, run original
+
+                // Log first few calls to confirm prefix is running
+                _tileRangePrefixCallCount++;
+                if (_tileRangePrefixCallCount <= 5)
+                    _log.Info($"Cheats: TileInteractionRange_Prefix HIT #{_tileRangePrefixCallCount} — returning true (bypass)");
+
+                __result = true;
+                return false; // skip original — always in range
+            }
+            catch (Exception ex)
+            {
+                _tileRangePrefixCallCount++;
+                if (_tileRangePrefixCallCount <= 5)
+                    _log.Error($"Cheats: TileInteractionRange_Prefix EXCEPTION: {ex.Message}");
+                return true; // on error, fall through to original
+            }
+        }
 
         /// <summary>
         /// Player.ResetEffects postfix — ALL per-frame cheat overrides.
@@ -645,15 +811,25 @@ namespace Plunder
                 if (_noFallDamage && _noFallDmgField != null)
                     _noFallDmgField.SetValue(__instance, true);
 
-                // Tool Range — set tileRangeX/Y directly (matches HEROsMod InfiniteReach pattern)
-                // HEROsMod only modifies tileRangeX/Y, not blockRange
-                // Vanilla defaults after ResetEffects: tileRangeX=5, tileRangeY=4
-                if (_toolRangeEnabled && _toolRangeMult > 1)
+                // Tool Range — tileRangeX/Y are STATIC, blockRange is INSTANCE
+                if (_toolRangeEnabled)
                 {
-                    if (_tileRangeXField != null)
-                        _tileRangeXField.SetValue(__instance, 5 * _toolRangeMult);
-                    if (_tileRangeYField != null)
-                        _tileRangeYField.SetValue(__instance, 4 * _toolRangeMult);
+                    object tileT = _tileRangeXField?.IsStatic == true ? null : __instance;
+                    object blockT = _blockRangeField?.IsStatic == true ? null : __instance;
+
+                    if (_toolRangeMult == 0)
+                    {
+                        int huge = int.MaxValue / 32;
+                        _tileRangeXField?.SetValue(tileT, huge);
+                        _tileRangeYField?.SetValue(tileT, huge);
+                        _blockRangeField?.SetValue(blockT, huge);
+                    }
+                    else if (_toolRangeMult > 1)
+                    {
+                        _tileRangeXField?.SetValue(tileT, 5 * _toolRangeMult);
+                        _tileRangeYField?.SetValue(tileT, 4 * _toolRangeMult);
+                        _blockRangeField?.SetValue(blockT, _toolRangeMult);
+                    }
                 }
 
                 // Spawn Rate
@@ -786,6 +962,43 @@ namespace Plunder
                 float runAccel = (float)_runAccelerationField.GetValue(__instance);
                 _maxRunSpeedField.SetValue(__instance, maxRun * _runSpeedMult);
                 _runAccelerationField.SetValue(__instance, runAccel * _runSpeedMult);
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Player.ItemCheck prefix — set tool range RIGHT BEFORE the tile interaction
+        /// range check runs. This is AFTER ResetEffects + UpdateBuffs + UpdateEquips
+        /// have all finished, so our values won't get overwritten.
+        /// </summary>
+        private static void ItemCheck_Prefix(object __instance)
+        {
+            if (!_toolRangeEnabled) return;
+
+            try
+            {
+                int myPlayer = (int)_myPlayerField.GetValue(null);
+                var players = _playerArrayField.GetValue(null) as Array;
+                if (players == null || !ReferenceEquals(players.GetValue(myPlayer), __instance)) return;
+
+                // tileRangeX/Y are STATIC, blockRange is INSTANCE — use correct target for each
+                object tileTarget = _tileRangeXField?.IsStatic == true ? null : __instance;
+                object blockTarget = _blockRangeField?.IsStatic == true ? null : __instance;
+
+                if (_toolRangeMult == 0)
+                {
+                    // Unlimited — reach anything on screen at any resolution/zoom
+                    int huge = int.MaxValue / 32;
+                    _tileRangeXField?.SetValue(tileTarget, huge);
+                    _tileRangeYField?.SetValue(tileTarget, huge);
+                    _blockRangeField?.SetValue(blockTarget, huge);
+                }
+                else if (_toolRangeMult > 1)
+                {
+                    _tileRangeXField?.SetValue(tileTarget, 5 * _toolRangeMult);
+                    _tileRangeYField?.SetValue(tileTarget, 4 * _toolRangeMult);
+                    _blockRangeField?.SetValue(blockTarget, _toolRangeMult);
+                }
             }
             catch { }
         }

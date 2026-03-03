@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using Monofont;
 using TerrariaModder.Core.UI;
 using TerrariaModder.Core.UI.Widgets;
+using Color4 = TerrariaModder.Core.UI.Color4;
 
 namespace Plunder
 {
@@ -299,7 +301,10 @@ namespace Plunder
             for (int i = 0; i < lines.Count; i++)
             {
                 Color4 color = (i < titleLineCount) ? UIColors.TextTitle : UIColors.Text;
-                UIRenderer.DrawText(lines[i], tx + Padding, ly, color);
+                if (MonoFont.IsReady)
+                    MonoFont.DrawText(lines[i], tx + Padding, ly, color.R, color.G, color.B, color.A);
+                else
+                    UIRenderer.DrawText(lines[i], tx + Padding, ly, color);
                 ly += LineHeight;
             }
 

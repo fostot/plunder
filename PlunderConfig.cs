@@ -25,23 +25,23 @@ namespace Plunder
         public bool TeleportToCursorEnabled { get; private set; }
         public bool MapTeleportEnabled { get; private set; }
 
-        // ---- Cheats: OP Cheats ----
-        public bool OpGodMode { get; private set; }
-        public bool OpInfiniteMana { get; private set; }
-        public bool OpMinionsEnabled { get; private set; }
-        public int OpMinionCount { get; private set; }
-        public bool OpInfiniteFlight { get; private set; }
-        public bool OpInfiniteAmmo { get; private set; }
-        public bool OpInfiniteBreath { get; private set; }
-        public bool OpNoKnockback { get; private set; }
-        public bool OpDamageEnabled { get; private set; }
-        public int OpDamageMult { get; private set; }
-        public bool OpNoFallDamage { get; private set; }
-        public bool OpNoTreeBombs { get; private set; }
-        public int OpSpawnRateMult { get; private set; }
-        public int OpRunSpeedMult { get; private set; }
-        public bool OpToolRangeEnabled { get; private set; }
-        public int OpToolRangeMult { get; private set; }
+        // ---- Cheats: Player/Combat/World ----
+        public bool GodMode { get; private set; }
+        public bool InfiniteMana { get; private set; }
+        public bool MinionsEnabled { get; private set; }
+        public int MinionCount { get; private set; }
+        public bool InfiniteFlight { get; private set; }
+        public bool InfiniteAmmo { get; private set; }
+        public bool InfiniteBreath { get; private set; }
+        public bool NoKnockback { get; private set; }
+        public bool DamageEnabled { get; private set; }
+        public int DamageMult { get; private set; }
+        public bool NoFallDamage { get; private set; }
+        public bool NoTreeBombs { get; private set; }
+        public int SpawnRateMult { get; private set; }
+        public int RunSpeedMult { get; private set; }
+        public bool ToolRangeEnabled { get; private set; }
+        public int ToolRangeMult { get; private set; }
 
         // ---- Cheats: World Actions ----
         public bool NoGravestones { get; private set; }
@@ -97,23 +97,23 @@ namespace Plunder
             TeleportToCursorEnabled = cfg.Get<bool>("teleportToCursorEnabled", false);
             MapTeleportEnabled = cfg.Get<bool>("mapTeleportEnabled", false);
 
-            // Cheats: OP Cheats
-            OpGodMode = cfg.Get<bool>("godMode", false);
-            OpInfiniteMana = cfg.Get<bool>("infiniteMana", false);
-            OpMinionsEnabled = cfg.Get<bool>("minionsEnabled", false);
-            OpMinionCount = cfg.Get<int>("minionCount", 0);
-            OpInfiniteFlight = cfg.Get<bool>("infiniteFlight", false);
-            OpInfiniteAmmo = cfg.Get<bool>("infiniteAmmo", false);
-            OpInfiniteBreath = cfg.Get<bool>("infiniteBreath", false);
-            OpNoKnockback = cfg.Get<bool>("noKnockback", false);
-            OpDamageEnabled = cfg.Get<bool>("damageEnabled", false);
-            OpDamageMult = cfg.Get<int>("damageMult", 0);
-            OpNoFallDamage = cfg.Get<bool>("noFallDamage", false);
-            OpNoTreeBombs = cfg.Get<bool>("noTreeBombs", false);
-            OpSpawnRateMult = cfg.Get<int>("spawnRateMult", 1);
-            OpRunSpeedMult = cfg.Get<int>("runSpeedMult", 1);
-            OpToolRangeEnabled = cfg.Get<bool>("toolRangeEnabled", false);
-            OpToolRangeMult = cfg.Get<int>("toolRangeMult", 1);
+            // Cheats: Player/Combat/World
+            GodMode = cfg.Get<bool>("godMode", false);
+            InfiniteMana = cfg.Get<bool>("infiniteMana", false);
+            MinionsEnabled = cfg.Get<bool>("minionsEnabled", false);
+            MinionCount = cfg.Get<int>("minionCount", 0);
+            InfiniteFlight = cfg.Get<bool>("infiniteFlight", false);
+            InfiniteAmmo = cfg.Get<bool>("infiniteAmmo", false);
+            InfiniteBreath = cfg.Get<bool>("infiniteBreath", false);
+            NoKnockback = cfg.Get<bool>("noKnockback", false);
+            DamageEnabled = cfg.Get<bool>("damageEnabled", false);
+            DamageMult = cfg.Get<int>("damageMult", 0);
+            NoFallDamage = cfg.Get<bool>("noFallDamage", false);
+            NoTreeBombs = cfg.Get<bool>("noTreeBombs", false);
+            SpawnRateMult = cfg.Get<int>("spawnRateMult", 1);
+            RunSpeedMult = cfg.Get<int>("runSpeedMult", 1);
+            ToolRangeEnabled = cfg.Get<bool>("toolRangeEnabled", false);
+            ToolRangeMult = cfg.Get<int>("toolRangeMult", 1);
 
             // Cheats: World Actions
             NoGravestones = cfg.Get<bool>("noGravestones", false);
