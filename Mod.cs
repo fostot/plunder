@@ -231,7 +231,7 @@ namespace Plunder
 
             // Register keybinds
             context.RegisterKeybind("toggle-panel", "Toggle Plunder Panel",
-                "Open or close the main Plunder panel", "OemCloseBrackets",
+                "Open or close the main Plunder panel", "OemBackslash",
                 OnTogglePanel);
 
             context.RegisterKeybind("toggle-fullbright", "Toggle Full Bright",
@@ -247,7 +247,7 @@ namespace Plunder
                 OnToggleFishingBuffs);
 
             context.RegisterKeybind("toggle-teleport", "Toggle Teleport To Cursor",
-                "Toggle the teleport to cursor feature on/off", "NumPad4",
+                "Toggle the teleport to cursor feature on/off", "OemQuotes",
                 OnToggleTeleport);
 
             context.RegisterKeybind("do-teleport", "Teleport To Cursor",
@@ -262,11 +262,19 @@ namespace Plunder
                 "Toggle invincibility on/off", "None",
                 OnToggleGodMode);
 
+            context.RegisterKeybind("speed-down", "Decrease Run Speed",
+                "Decrease run speed multiplier by 1", "OemOpenBrackets",
+                OnSpeedDown);
+
+            context.RegisterKeybind("speed-up", "Increase Run Speed",
+                "Increase run speed multiplier by 1", "OemCloseBrackets",
+                OnSpeedUp);
+
             _panel.Register();
             FrameEvents.OnPreUpdate += _panel.Update;
 
             _log.Info($"Plunder v{BuildVersion.Version} initialized");
-            _log.Info("  ] = Panel | Y = FullBright | NumPad4 = Toggle Teleport | T = Teleport");
+            _log.Info("  \\ = Panel | Y = FullBright | ' = Toggle Teleport | T = Teleport | [ ] = Speed");
         }
 
         public void OnWorldLoad()
@@ -460,6 +468,22 @@ namespace Plunder
         {
             Cheats.ToggleToolRange();
             _config.Set("toolRangeEnabled", Cheats.ToolRangeEnabled);
+        }
+
+        // ---- Speed keybind handlers ----
+
+        private void OnSpeedDown()
+        {
+            int speed = Math.Max(1, Cheats.RunSpeedMult - 1);
+            Cheats.SetRunSpeedMult(speed);
+            _config.Set("runSpeedMult", speed);
+        }
+
+        private void OnSpeedUp()
+        {
+            int speed = Math.Min(10, Cheats.RunSpeedMult + 1);
+            Cheats.SetRunSpeedMult(speed);
+            _config.Set("runSpeedMult", speed);
         }
 
         // ---- World Actions toggle handlers ----

@@ -1,7 +1,7 @@
 ﻿{
   "id": "plunder",
   "name": "Plunder",
-  "version": "0.1.0.96.8399",
+  "version": "0.1.0.97.8418",
   "author": "Fostot",
   "description": "Plunder - A modular Terraria companion mod with cheat features, item packs, and more",
   "entry_dll": "Plunder.dll",
@@ -238,7 +238,7 @@
       "id": "toggle-panel",
       "label": "Toggle Plunder Panel",
       "description": "Open or close the main Plunder panel",
-      "default": "OemCloseBrackets"
+      "default": "OemBackslash"
     },
     {
       "id": "toggle-fullbright",
@@ -262,7 +262,7 @@
       "id": "toggle-teleport",
       "label": "Toggle Teleport To Cursor",
       "description": "Toggle the teleport to cursor feature on/off",
-      "default": "NumPad4"
+      "default": "OemQuotes"
     },
     {
       "id": "do-teleport",
@@ -281,6 +281,18 @@
       "label": "Toggle God Mode",
       "description": "Toggle invincibility on/off",
       "default": "None"
+    },
+    {
+      "id": "speed-down",
+      "label": "Decrease Run Speed",
+      "description": "Decrease run speed multiplier by 1",
+      "default": "OemOpenBrackets"
+    },
+    {
+      "id": "speed-up",
+      "label": "Increase Run Speed",
+      "description": "Increase run speed multiplier by 1",
+      "default": "OemCloseBrackets"
     }
   ]
 }

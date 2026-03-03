@@ -117,10 +117,12 @@ Drop-in JSON item packs that spawn predefined sets of items into your inventory.
 
 | Key | Action |
 |-----|--------|
-| `]` | Toggle Plunder panel |
+| `\` | Toggle Plunder panel |
 | `Y` | Toggle Full Bright |
-| `NumPad4` | Toggle Teleport to Cursor |
+| `'` | Toggle Teleport to Cursor |
 | `T` | Teleport to cursor (when enabled) |
+| `[` | Decrease Run Speed multiplier |
+| `]` | Increase Run Speed multiplier |
 
 Additional keybinds (God Mode, Map Teleport, Player Glow, Fishing Buffs) are unbound by default and can be configured through TerrariaModder's keybind settings.
 
