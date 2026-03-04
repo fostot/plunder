@@ -213,6 +213,9 @@ namespace Plunder
         private static FieldInfo _defaultSpawnRateField;
         private static FieldInfo _defaultMaxSpawnsField;
 
+        // NPC.HitInfo — cached from StrikeNPC parameter type (CheatSheet InstantKill pattern)
+        private static FieldInfo _instantKillField;
+
         // Main world flags
         private static FieldInfo _getGoodWorldField;
 
@@ -516,11 +519,22 @@ namespace Plunder
 
                 if (strikeMethod != null)
                 {
+                    // Cache HitInfo.InstantKill field from the first parameter type
+                    // (CheatSheet pattern: hit.InstantKill = true)
+                    var parms = strikeMethod.GetParameters();
+                    if (parms.Length > 0)
+                    {
+                        var hitInfoType = parms[0].ParameterType;
+                        _instantKillField = hitInfoType.GetField("InstantKill",
+                            BindingFlags.Public | BindingFlags.Instance);
+                        _log.Info($"Cheats: HitInfo type={hitInfoType.Name}, InstantKill={(_instantKillField != null ? "found" : "NOT FOUND")}");
+                    }
+
                     var prefix = typeof(Cheats).GetMethod(nameof(NpcStrike_Prefix),
                         BindingFlags.NonPublic | BindingFlags.Static);
                     _harmony.Patch(strikeMethod,
                         prefix: new HarmonyMethod(prefix));
-                    _log.Info("Cheats: Patched NPC.StrikeNPC (OHK prefix only)");
+                    _log.Info("Cheats: Patched NPC.StrikeNPC (OHK prefix)");
                 }
                 else
                 {
@@ -534,20 +548,23 @@ namespace Plunder
         {
             try
             {
-                var postfix = typeof(Cheats).GetMethod(nameof(GetWeaponDamage_Postfix),
-                    BindingFlags.NonPublic | BindingFlags.Static);
-                bool patched = false;
+                MethodInfo gwdMethod = null;
                 foreach (var m in _playerType.GetMethods(BindingFlags.Public | BindingFlags.Instance))
                 {
-                    if (m.Name == "GetWeaponDamage")
-                    {
-                        _harmony.Patch(m, postfix: new HarmonyMethod(postfix));
-                        _log.Info($"Cheats: Patched Player.GetWeaponDamage ({m.GetParameters().Length} params)");
-                        patched = true;
-                    }
+                    if (m.Name == "GetWeaponDamage") { gwdMethod = m; break; }
                 }
-                if (!patched)
+
+                if (gwdMethod != null)
+                {
+                    var postfix = typeof(Cheats).GetMethod(nameof(GetWeaponDamage_Postfix),
+                        BindingFlags.NonPublic | BindingFlags.Static);
+                    _harmony.Patch(gwdMethod, postfix: new HarmonyMethod(postfix));
+                    _log.Info($"Cheats: Patched Player.GetWeaponDamage ({gwdMethod.GetParameters().Length} params)");
+                }
+                else
+                {
                     _log.Warn("Cheats: Player.GetWeaponDamage not found");
+                }
             }
             catch (Exception ex) { _log.Error($"Cheats: GetWeaponDamage patch error - {ex.Message}"); }
         }
@@ -911,14 +928,23 @@ namespace Plunder
             return true;
         }
 
-        /// <summary>NPC.StrikeNPC prefix — one hit kill sets life=1.</summary>
-        private static void NpcStrike_Prefix(object __instance)
+        /// <summary>NPC.StrikeNPC prefix — one hit kill via InstantKill (CheatSheet pattern).</summary>
+        private static void NpcStrike_Prefix(object __instance, object[] __args)
         {
             if (!_damageEnabled || _damageMult != 0) return;
 
             try
             {
-                _npcLifeField.SetValue(__instance, 1);
+                // CheatSheet pattern: set HitInfo.InstantKill = true on the first arg
+                if (_instantKillField != null && __args != null && __args.Length > 0)
+                {
+                    _instantKillField.SetValue(__args[0], true);
+                }
+                else
+                {
+                    // Fallback for older Terraria without HitInfo.InstantKill
+                    _npcLifeField.SetValue(__instance, 1);
+                }
             }
             catch { }
         }
