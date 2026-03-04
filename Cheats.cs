@@ -218,9 +218,6 @@ namespace Plunder
 
         private static bool _reflectionReady;
 
-        // Thread-static for NPC damage mult calculation
-        [ThreadStatic] private static int _preStrikeLife;
-
         // Thread-static for ShakeTree getGoodWorld save/restore
         [ThreadStatic] private static bool _savedGetGoodWorld;
 
@@ -411,8 +408,11 @@ namespace Plunder
                 // 3) Player.KillMe prefix — god mode
                 PatchPlayerKillMe();
 
-                // 4) NPC.StrikeNPC — one hit kill / damage mult
+                // 4) NPC.StrikeNPC — one hit kill
                 PatchNpcStrike();
+
+                // 4b) Player.GetWeaponDamage — damage multiplier
+                PatchGetWeaponDamage();
 
                 // 5) Player.HorizontalMovement prefix — run speed multiplier
                 var horizMethod = _playerType.GetMethod("HorizontalMovement",
@@ -518,12 +518,9 @@ namespace Plunder
                 {
                     var prefix = typeof(Cheats).GetMethod(nameof(NpcStrike_Prefix),
                         BindingFlags.NonPublic | BindingFlags.Static);
-                    var postfix = typeof(Cheats).GetMethod(nameof(NpcStrike_Postfix),
-                        BindingFlags.NonPublic | BindingFlags.Static);
                     _harmony.Patch(strikeMethod,
-                        prefix: new HarmonyMethod(prefix),
-                        postfix: new HarmonyMethod(postfix));
-                    _log.Info("Cheats: Patched NPC.StrikeNPC");
+                        prefix: new HarmonyMethod(prefix));
+                    _log.Info("Cheats: Patched NPC.StrikeNPC (OHK prefix only)");
                 }
                 else
                 {
@@ -531,6 +528,28 @@ namespace Plunder
                 }
             }
             catch (Exception ex) { _log.Error($"Cheats: StrikeNPC patch error - {ex.Message}"); }
+        }
+
+        private static void PatchGetWeaponDamage()
+        {
+            try
+            {
+                var postfix = typeof(Cheats).GetMethod(nameof(GetWeaponDamage_Postfix),
+                    BindingFlags.NonPublic | BindingFlags.Static);
+                bool patched = false;
+                foreach (var m in _playerType.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+                {
+                    if (m.Name == "GetWeaponDamage")
+                    {
+                        _harmony.Patch(m, postfix: new HarmonyMethod(postfix));
+                        _log.Info($"Cheats: Patched Player.GetWeaponDamage ({m.GetParameters().Length} params)");
+                        patched = true;
+                    }
+                }
+                if (!patched)
+                    _log.Warn("Cheats: Player.GetWeaponDamage not found");
+            }
+            catch (Exception ex) { _log.Error($"Cheats: GetWeaponDamage patch error - {ex.Message}"); }
         }
 
         private static void PatchPickAmmo()
@@ -892,41 +911,30 @@ namespace Plunder
             return true;
         }
 
-        /// <summary>NPC.StrikeNPC prefix — one hit kill sets life=1, damage mult stores life.</summary>
+        /// <summary>NPC.StrikeNPC prefix — one hit kill sets life=1.</summary>
         private static void NpcStrike_Prefix(object __instance)
         {
-            bool isOhk = _damageEnabled && _damageMult == 0;
-            bool isMult = _damageEnabled && _damageMult > 1;
-            if (!isOhk && !isMult) return;
+            if (!_damageEnabled || _damageMult != 0) return;
 
             try
             {
-                if (isOhk)
-                {
-                    _npcLifeField.SetValue(__instance, 1);
-                }
-                else
-                {
-                    _preStrikeLife = (int)_npcLifeField.GetValue(__instance);
-                }
+                _npcLifeField.SetValue(__instance, 1);
             }
             catch { }
         }
 
-        /// <summary>NPC.StrikeNPC postfix — damage mult subtracts extra damage.</summary>
-        private static void NpcStrike_Postfix(object __instance)
+        /// <summary>Player.GetWeaponDamage postfix — multiply weapon damage for local player.</summary>
+        private static void GetWeaponDamage_Postfix(object __instance, ref int __result)
         {
-            bool isOhk = _damageEnabled && _damageMult == 0;
-            if (!_damageEnabled || _damageMult <= 1 || isOhk) return;
+            if (!_damageEnabled || _damageMult <= 1) return;
 
             try
             {
-                int currentLife = (int)_npcLifeField.GetValue(__instance);
-                int damageDealt = _preStrikeLife - currentLife;
-                if (damageDealt > 0)
+                int myPlayer = (int)_myPlayerField.GetValue(null);
+                var players = _playerArrayField.GetValue(null) as Array;
+                if (players != null && ReferenceEquals(players.GetValue(myPlayer), __instance))
                 {
-                    int extraDamage = damageDealt * (_damageMult - 1);
-                    _npcLifeField.SetValue(__instance, currentLife - extraDamage);
+                    __result *= _damageMult;
                 }
             }
             catch { }
